@@ -92,11 +92,12 @@ export async function addProductoConReceta(formData: FormData) {
 
     if (ingredientes.length === 0) throw new Error('La receta debe tener al menos un ingrediente.');
 
-    // Calculate cost of production
-    const costoProduccion = ingredientes.reduce((acc, ing) => {
+    // Costo total de la receta dividido por rinde = costo por unidad
+    const costoTotalReceta = ingredientes.reduce((acc, ing) => {
       const costoPorUnidad = insumosMap.get(ing.id) || 0;
       return acc + costoPorUnidad * ing.qty;
     }, 0);
+    const costoProduccion = costoTotalReceta / rindeReceta;
 
     const margen = margenPct / 100;
     const precioVentaSugerido = costoProduccion * (1 + margen);
@@ -345,10 +346,11 @@ export async function updateProductoConReceta(formData: FormData) {
     }
     if (ingredientes.length === 0) throw new Error('La receta debe tener al menos un ingrediente.');
 
-    // Recalcular costo
+    // Recalcular costo por unidad (costo total receta / rinde)
     const insumosRows = await insumosSheet.getRows();
     const insumosMap = new Map(insumosRows.map(r => [r.get('ID'), parseFloat(r.get('Costo_Unitario')) || 0]));
-    const costoProduccion = ingredientes.reduce((acc, ing) => acc + (insumosMap.get(ing.id) || 0) * ing.qty, 0);
+    const costoTotalReceta = ingredientes.reduce((acc, ing) => acc + (insumosMap.get(ing.id) || 0) * ing.qty, 0);
+    const costoProduccion = costoTotalReceta / rindeReceta;
     const precioVentaSugerido = costoProduccion * (1 + margenPct / 100);
 
     // Actualizar producto
