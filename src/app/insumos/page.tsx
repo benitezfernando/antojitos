@@ -1,6 +1,6 @@
 import { getGoogleSheet } from "@/lib/google-sheets";
 import { addInsumo } from "@/app/actions";
-import { DeleteInsumoButton, EditInsumoRow } from "./InsumoActions";
+import { InsumoRow } from "./InsumoActions";
 
 export const dynamic = 'force-dynamic';
 
@@ -65,26 +65,7 @@ export default async function InsumosPage() {
               </thead>
               <tbody>
                 {insumos.map((item, idx) => (
-                  <tr key={`${item.id}-${idx}`} style={{ borderBottom: "1px solid var(--glass-border)" }}>
-                    <td style={{ padding: "1rem 0.5rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>{item.id}</td>
-                    <td style={{ padding: "1rem 0.5rem", fontWeight: "500" }}>{item.name}</td>
-                    <td style={{ padding: "1rem 0.5rem" }}>{item.unit}</td>
-                    <td style={{ padding: "1rem 0.5rem" }}>${item.cost.toFixed(2)}</td>
-                    <td style={{ padding: "1rem 0.5rem" }}>
-                      <span style={{ 
-                        color: item.stock <= item.minStock ? "var(--danger)" : "inherit",
-                        fontWeight: item.stock <= item.minStock ? "bold" : "normal"
-                      }}>
-                        {item.stock}
-                      </span>
-                    </td>
-                    <td style={{ padding: "0.5rem" }}>
-                      <div style={{ display: "flex", gap: "0.25rem" }}>
-                        <EditInsumoRow insumo={item} />
-                        <DeleteInsumoButton id={item.id} name={item.name} />
-                      </div>
-                    </td>
-                  </tr>
+                  <InsumoRow key={`${item.id}-${idx}`} insumo={item} />
                 ))}
                 {insumos.length === 0 && (
                   <tr>
