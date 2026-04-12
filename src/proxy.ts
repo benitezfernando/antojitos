@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const SESSION_COOKIE = 'antojitos_session';
+const SESSION_COOKIE = 'antojitos_session_v2';
 
 const PUBLIC_PATHS = ['/login'];
 const PUBLIC_API_PATHS = ['/api/init-db', '/api/seed-db', '/api/test-db'];

@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 
 const VALID_USER = process.env.ADMIN_USERNAME ?? '';
 const VALID_PASS = process.env.ADMIN_PASSWORD ?? '';
-const SESSION_COOKIE = 'antojitos_session';
+const SESSION_COOKIE = 'antojitos_session_v2';
 
 if (!VALID_USER || !VALID_PASS) {
   console.warn('[Auth] ADMIN_USERNAME o ADMIN_PASSWORD no están definidas en las variables de entorno.');
