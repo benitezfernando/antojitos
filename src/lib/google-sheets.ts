@@ -11,11 +11,14 @@ export async function getGoogleSheet(sheetIndexOrTitle: number | string = 0) {
     throw new Error('Google Sheets credentials are not fully configured in environment variables.');
   }
 
-  // Initialize Auth
+  // Vercel sometimes adds wrapping quotes to env vars; also convert literal \n to real newlines.
+  const privateKey = GOOGLE_PRIVATE_KEY
+    .replace(/^["']|["']$/g, '')  // remove surrounding quotes if any
+    .replace(/\\n/g, '\n');        // convert escaped \n to real newlines
+
   const serviceAccountAuth = new JWT({
     email: GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    // Google Private Keys use \n for newlines, which need to be parsed correctly from .env strings
-    key: GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    key: privateKey,
     scopes: [
       'https://www.googleapis.com/auth/spreadsheets',
     ],
