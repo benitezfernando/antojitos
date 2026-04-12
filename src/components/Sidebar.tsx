@@ -6,19 +6,22 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 
 const navLinks = [
-  { href: '/', label: '🏠 Dashboard' },
-  { href: '/insumos', label: '🥄 Materias Primas' },
-  { href: '/recetas', label: '📋 Recetas y Productos' },
-  { href: '/configuracion', label: '⚙️ Configuración' },
+  { href: '/',            label: 'Dashboard',          icon: '◈' },
+  { href: '/insumos',     label: 'Materias Primas',    icon: '⬡' },
+  { href: '/recetas',     label: 'Recetas y Productos', icon: '◎' },
+  { href: '/produccion',  label: 'Producción y Ventas', icon: '◆' },
+  { href: '/configuracion', label: 'Acerca de',        icon: '○' },
 ];
 
 export default function Sidebar() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
+  const close = () => setOpen(false);
+
   return (
     <>
-      {/* Mobile top bar */}
+      {/* Mobile topbar */}
       <div className="mobile-topbar">
         <button className="hamburger-btn" onClick={() => setOpen(true)} aria-label="Abrir menú">
           <span /><span /><span />
@@ -26,56 +29,54 @@ export default function Sidebar() {
         <Image
           src="/ico.jpeg"
           alt="Antojitos"
-          width={36}
-          height={36}
+          width={30}
+          height={30}
           style={{ borderRadius: '50%', objectFit: 'cover' }}
         />
-        <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--primary)' }}>Antojitos</span>
+        <span className="mobile-topbar-title">
+          {navLinks.find(l => l.href === pathname)?.label ?? 'Antojitos'}
+        </span>
       </div>
 
-      {/* Overlay when sidebar open on mobile */}
-      {open && (
-        <div className="sidebar-overlay" onClick={() => setOpen(false)} />
-      )}
+      {/* Overlay */}
+      {open && <div className="sidebar-overlay" onClick={close} />}
 
       {/* Sidebar */}
       <aside className={`sidebar ${open ? 'sidebar-open' : ''}`}>
+
+        {/* Brand */}
         <div className="sidebar-brand">
           <Image
             src="/ico.jpeg"
             alt="Antojitos"
-            width={80}
-            height={80}
-            style={{ borderRadius: '50%', objectFit: 'cover', display: 'block', margin: '0 auto 0.75rem' }}
+            width={40}
+            height={40}
+            style={{ borderRadius: '50%', objectFit: 'cover' }}
             priority
           />
-          <span>Antojitos Admin</span>
+          <div className="sidebar-brand-text">
+            <span className="sidebar-brand-name">Antojitos</span>
+            <span className="sidebar-brand-sub">Panel de gestión</span>
+          </div>
         </div>
 
+        {/* Nav */}
         <nav className="sidebar-nav">
           {navLinks.map(link => (
             <Link
               key={link.href}
               href={link.href}
               className={`nav-item ${pathname === link.href ? 'nav-item-active' : ''}`}
-              onClick={() => setOpen(false)}
+              onClick={close}
             >
+              <span style={{ fontSize: '0.85rem', opacity: 0.7 }}>{link.icon}</span>
               {link.label}
             </Link>
           ))}
         </nav>
 
-        <div className="sidebar-footer">
-          <p>v1.0.0</p>
-          <button
-            className="hamburger-close"
-            onClick={() => setOpen(false)}
-            style={{ display: 'none' }}
-            aria-label="Cerrar menú"
-          >
-            ✕ Cerrar
-          </button>
-        </div>
+        {/* Footer */}
+        <div className="sidebar-footer">v1.0.0 · Next.js 16</div>
       </aside>
     </>
   );

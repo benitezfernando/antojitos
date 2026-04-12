@@ -1,8 +1,9 @@
 import { login } from '@/app/auth-actions';
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; redirect?: string }> }) {
   const params = await searchParams;
   const hasError = params?.error === '1';
+  const redirectTo = params?.redirect ?? '/';
 
   return (
     <div style={{
@@ -17,7 +18,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         radial-gradient(at 100% 100%, rgba(141,110,99,0.15) 0px, transparent 50%)`
     }}>
       <div className="glass-panel" style={{ width: '100%', maxWidth: '380px' }}>
-        {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -26,7 +26,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             style={{ width: 100, height: 100, borderRadius: '50%', objectFit: 'cover', marginBottom: '1rem' }}
           />
           <h1 style={{ fontSize: '1.6rem', color: 'var(--primary)', marginBottom: '0.25rem' }}>Antojitos Admin</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Configuración del sistema</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Ingresá para continuar</p>
         </div>
 
         {hasError && (
@@ -44,10 +44,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         )}
 
         <form action={login} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <input type="hidden" name="redirectTo" value={redirectTo} />
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <label style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: '600' }}>
-              Usuario
-            </label>
+            <label style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: '600' }}>Usuario</label>
             <input
               name="username"
               type="text"
@@ -67,9 +67,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <label style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: '600' }}>
-              Contraseña
-            </label>
+            <label style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: '600' }}>Contraseña</label>
             <input
               name="password"
               type="password"

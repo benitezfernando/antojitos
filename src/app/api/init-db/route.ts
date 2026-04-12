@@ -37,8 +37,22 @@ export async function GET() {
       await configSheet.addRow(['MargenGlobalPorcentaje', '0.30']);
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    // 5. Create 'Produccion' sheet
+    let produccionSheet = doc.sheetsByTitle['Produccion'];
+    if (!produccionSheet) {
+      produccionSheet = await doc.addSheet({ title: 'Produccion' });
+      await produccionSheet.setHeaderRow(['ID', 'ID_Producto', 'Nombre_Producto', 'Cantidad', 'Fecha']);
+    }
+
+    // 6. Create 'Ventas' sheet
+    let ventasSheet = doc.sheetsByTitle['Ventas'];
+    if (!ventasSheet) {
+      ventasSheet = await doc.addSheet({ title: 'Ventas' });
+      await ventasSheet.setHeaderRow(['ID', 'ID_Producto', 'Nombre_Producto', 'Cantidad', 'Precio_Unitario', 'Total', 'Fecha']);
+    }
+
+    return NextResponse.json({
+      success: true,
       message: 'Base de datos inicializada correctamente con todas las pestañas.'
     });
   } catch (error: any) {

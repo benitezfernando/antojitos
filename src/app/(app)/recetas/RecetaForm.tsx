@@ -1,0 +1,158 @@
+'use client';
+
+import { useRef, useState } from 'react';
+import { addProductoConReceta } from '@/app/actions';
+
+interface Insumo { id: string; name: string; unit: string; cost: number; }
+interface Ingrediente { insumoId: string; cantidad: string; }
+
+function calcularCosto(ingredientes: Ingrediente[], insumos: Insumo[], margen: number) {
+  const costo = ingredientes.reduce((acc, ing) => {
+    const ins = insumos.find(i => i.id === ing.insumoId);
+    if (!ins) return acc;
+    return acc + ins.cost * parseFloat(ing.cantidad || '0');
+  }, 0);
+  return { costo, precio: costo * (1 + margen / 100) };
+}
+
+export default function RecetaForm({ insumos }: { insumos: Insumo[] }) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const [ingredientes, setIngredientes] = useState<Ingrediente[]>([
+    { insumoId: insumos[0]?.id || '', cantidad: '' },
+  ]);
+  const [margen, setMargen] = useState(30);
+  const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const preview = calcularCosto(ingredientes, insumos, margen);
+
+  const addIngrediente = () =>
+    setIngredientes(p => [...p, { insumoId: insumos[0]?.id || '', cantidad: '' }]);
+
+  const removeIngrediente = (idx: number) =>
+    setIngredientes(p => p.filter((_, i) => i !== idx));
+
+  const updateIngrediente = (idx: number, field: keyof Ingrediente, value: string) =>
+    setIngredientes(p => p.map((ing, i) => i === idx ? { ...ing, [field]: value } : ing));
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    setStatus(null);
+    const fd = new FormData(e.currentTarget);
+    ingredientes.forEach((ing, i) => {
+      fd.set(`insumoId_${i}`, ing.insumoId);
+      fd.set(`cantidad_${i}`, ing.cantidad);
+    });
+    const res = await addProductoConReceta(fd);
+    setLoading(false);
+    if (res.success) {
+      setStatus({ ok: true, msg: `Guardado. Costo: $${res.costoProduccion} · Precio: $${res.precioVenta}` });
+      formRef.current?.reset();
+      setIngredientes([{ insumoId: insumos[0]?.id || '', cantidad: '' }]);
+      setMargen(30);
+    } else {
+      setStatus({ ok: false, msg: res.error ?? 'Error al guardar' });
+    }
+  };
+
+  return (
+    <form ref={formRef} onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+      <div className="form-group">
+        <label className="label">Nombre del producto</label>
+        <input className="input" name="nombre" type="text" required placeholder="Ej. Alfajores de Maicena (12u)" />
+      </div>
+
+      <div className="grid-2col-equal" style={{ gap: '0.75rem' }}>
+        <div className="form-group">
+          <label className="label">Categoría</label>
+          <select className="input" name="categoria" required>
+            <option value="Cookies">Cookies</option>
+            <option value="Postres">Postres</option>
+            <option value="Chocolates">Chocolates</option>
+            <option value="Alfajores">Alfajores</option>
+            <option value="Tortas">Tortas</option>
+            <option value="Otros">Otros</option>
+          </select>
+        </div>
+        <div className="form-group">
+          <label className="label">Stock inicial</label>
+          <input className="input" name="stock" type="number" step="1" defaultValue="0" />
+        </div>
+      </div>
+
+      {/* Ingredientes */}
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
+          <label className="label" style={{ margin: 0 }}>Ingredientes</label>
+          <button type="button" onClick={addIngrediente}
+            style={{ fontSize: '0.82rem', color: 'var(--primary-dark)', fontWeight: 700, cursor: 'pointer' }}>
+            + Agregar
+          </button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          {ingredientes.map((ing, idx) => {
+            const ins = insumos.find(i => i.id === ing.insumoId);
+            return (
+              <div key={idx} className="ingredient-row" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <select value={ing.insumoId} onChange={e => updateIngrediente(idx, 'insumoId', e.target.value)}
+                  className="input" style={{ flex: 2 }}>
+                  {insumos.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                </select>
+                <input type="number" step="0.01" placeholder={`(${ins?.unit || ''})`} value={ing.cantidad}
+                  onChange={e => updateIngrediente(idx, 'cantidad', e.target.value)}
+                  className="input" style={{ flex: 1 }} />
+                {ingredientes.length > 1 && (
+                  <button type="button" onClick={() => removeIngrediente(idx)}
+                    style={{ color: 'var(--danger)', fontSize: '1.1rem', padding: '0.2rem', flexShrink: 0 }}>✕</button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Margen */}
+      <div className="form-group">
+        <label className="label">
+          Ganancia: <strong style={{ color: 'var(--primary-dark)' }}>{margen}%</strong>
+        </label>
+        <input type="range" name="margen" min="10" max="200" step="5" value={margen}
+          onChange={e => setMargen(parseInt(e.target.value))}
+          style={{ accentColor: 'var(--primary)', width: '100%' }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
+          <span>10%</span><span>200%</span>
+        </div>
+      </div>
+
+      {/* Preview */}
+      {preview.costo > 0 && (
+        <div style={{
+          padding: '1rem', borderRadius: 'var(--r-md)',
+          background: 'var(--primary-light)', border: '1px solid var(--border)',
+          display: 'flex', justifyContent: 'space-between',
+        }}>
+          <div>
+            <p className="label" style={{ marginBottom: '0.2rem' }}>Costo producción</p>
+            <p style={{ fontWeight: 800, fontSize: '1.1rem' }}>${preview.costo.toFixed(2)}</p>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <p className="label" style={{ marginBottom: '0.2rem' }}>Precio sugerido</p>
+            <p style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--primary-dark)' }}>${preview.precio.toFixed(2)}</p>
+          </div>
+        </div>
+      )}
+
+      {status && (
+        <div className={`alert ${status.ok ? 'alert-success' : 'alert-error'}`}>
+          {status.ok ? '✓' : '✕'} {status.msg}
+        </div>
+      )}
+
+      <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%' }}>
+        {loading ? 'Guardando...' : 'Guardar Receta y Producto'}
+      </button>
+    </form>
+  );
+}
