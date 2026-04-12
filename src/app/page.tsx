@@ -45,7 +45,7 @@ export default async function Home() {
 
   } catch (error: any) {
     console.error(error);
-    errorMsg = "No se pudo conectar a la base de datos Google Sheets. Verifica tus accesos.";
+    errorMsg = `Error de conexión: ${error.message || "Verifica tus accesos en Vercel."}`;
   }
 
   return (
