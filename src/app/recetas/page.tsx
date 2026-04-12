@@ -45,7 +45,8 @@ export default async function RecetasPage() {
       recetas = rows.map(r => ({
         prodId: r.get('ID_Producto'),
         insumoId: r.get('ID_Insumo'),
-        cantidad: parseFloat(r.get('Cantidad_Necesaria')) || 0,
+        // Support both period and comma as decimal separator (Spanish locale)
+        cantidad: parseFloat(String(r.get('Cantidad_Necesaria') ?? '0').replace(',', '.')) || 0,
       }));
     }
 
@@ -180,24 +181,45 @@ export default async function RecetasPage() {
           <h2 style={{ marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--glass-border)' }}>
             Ingredientes por Producto
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
             {productos.map(prod => {
               const ings = recetas.filter(r => r.prodId === prod.id);
               if (ings.length === 0) return null;
               return (
                 <div key={`${prod.id}-${prod.name}`} style={{ 
-                  padding: '1rem', borderRadius: '12px', 
-                  border: '1px solid var(--glass-border)',
-                  backgroundColor: 'rgba(255,255,255,0.4)'
+                  borderRadius: '14px', 
+                  border: '1.5px solid var(--glass-border)',
+                  backgroundColor: 'rgba(255,255,255,0.6)',
+                  boxShadow: '0 2px 12px rgba(141,110,99,0.08)',
+                  overflow: 'hidden'
                 }}>
-                  <h3 style={{ marginBottom: '0.75rem', fontSize: '1rem' }}>{prod.name}</h3>
-                  <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  {/* Card header */}
+                  <div style={{
+                    backgroundColor: 'var(--primary)',
+                    padding: '0.75rem 1rem',
+                  }}>
+                    <h3 style={{ margin: 0, fontSize: '1rem', color: 'white', fontWeight: '700', textTransform: 'capitalize' }}>
+                      {prod.name}
+                    </h3>
+                  </div>
+                  {/* Ingredient list */}
+                  <ul style={{ listStyle: 'none', padding: '0.5rem 1rem 0.75rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     {ings.map((ing, i) => {
                       const ins = insumosMap.get(ing.insumoId);
+                      // Format quantity: show decimals only when needed
+                      const cantidadStr = Number.isInteger(ing.cantidad)
+                        ? String(ing.cantidad)
+                        : ing.cantidad.toFixed(3).replace(/\.?0+$/, '');
                       return (
-                        <li key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                          <span>{ins?.name || ing.insumoId}</span>
-                          <span style={{ fontWeight: '600', color: 'var(--text-main)' }}>{ing.cantidad} {ins?.unit}</span>
+                        <li key={i} style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          fontSize: '0.9rem', padding: '0.35rem 0',
+                          borderBottom: i < ings.length - 1 ? '1px solid var(--glass-border)' : 'none'
+                        }}>
+                          <span style={{ color: 'var(--text-muted)' }}>{ins?.name || ing.insumoId}</span>
+                          <span style={{ fontWeight: '700', color: 'var(--text-main)', whiteSpace: 'nowrap', marginLeft: '0.5rem' }}>
+                            {cantidadStr} {ins?.unit}
+                          </span>
                         </li>
                       );
                     })}
