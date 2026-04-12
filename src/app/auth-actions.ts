@@ -7,7 +7,7 @@ const VALID_USER = 'ferbenitez';
 const VALID_PASS = 'ferbenitez';
 const SESSION_COOKIE = 'antojitos_session';
 
-export async function login(formData: FormData) {
+export async function login(formData: FormData): Promise<void> {
   const user = formData.get('username') as string;
   const pass = formData.get('password') as string;
 
@@ -26,7 +26,7 @@ export async function login(formData: FormData) {
   }
 }
 
-export async function logout() {
+export async function logout(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE);
   redirect('/login');

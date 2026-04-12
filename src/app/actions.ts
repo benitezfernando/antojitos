@@ -3,7 +3,7 @@
 import { getGoogleSheet } from "@/lib/google-sheets";
 import { revalidatePath } from "next/cache";
 
-export async function addInsumo(formData: FormData) {
+export async function addInsumo(formData: FormData): Promise<void> {
   try {
     const { doc } = await getGoogleSheet();
     const sheet = doc.sheetsByTitle['Insumos'];
@@ -23,9 +23,8 @@ export async function addInsumo(formData: FormData) {
 
     revalidatePath('/insumos');
     revalidatePath('/');
-    return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message || "Error al guardar el insumo" };
+    console.error('Error al guardar insumo:', error.message);
   }
 }
 
