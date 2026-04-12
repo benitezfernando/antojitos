@@ -76,6 +76,8 @@ export async function addProductoConReceta(formData: FormData) {
     const categoria = requireString(formData.get('categoria'), 'Categoría');
     const stockProducto = requirePositiveNumber(formData.get('stock'), 'Stock inicial');
     const margenPct = requirePercentage(formData.get('margen'), 'Margen de ganancia');
+    const rindeReceta = requirePositiveNumber(formData.get('rinde'), 'Rinde de receta');
+    if (rindeReceta === 0) throw new Error('El rinde debe ser mayor a 0.');
 
     // Parse recipe ingredients from formData (insumoId_0, cantidad_0, ...)
     const ingredientes: { id: string; qty: number }[] = [];
@@ -111,6 +113,7 @@ export async function addProductoConReceta(formData: FormData) {
       Margen_Ganancia: String(margen),
       Precio_Venta_Sugerido: precioVentaSugerido.toFixed(2),
       Stock_Actual: String(stockProducto),
+      Rinde_Receta: String(rindeReceta),
     });
 
     // Create recipe rows
@@ -201,18 +204,20 @@ export async function registrarProduccion(formData: FormData) {
     const prodRow = prodRows.find(r => r.get('ID') === productoId);
     if (!prodRow) throw new Error('Producto no encontrado.');
     const nombreProducto = prodRow.get('Nombre');
+    const rindeReceta = parseFloat(String(prodRow.get('Rinde_Receta') ?? '1').replace(',', '.')) || 1;
 
     // Obtener receta del producto
     const recetaRows = await recetasSheet.getRows();
     const ingredientes = recetaRows.filter(r => r.get('ID_Producto') === productoId);
     if (ingredientes.length === 0) throw new Error('Este producto no tiene receta definida.');
 
-    // Verificar y descontar stock de insumos
+    // Verificar y descontar stock de insumos (escalado por rinde)
     const insumosRows = await insumosSheet.getRows();
     for (const ing of ingredientes) {
       const insumoId = ing.get('ID_Insumo');
       const cantNecesaria = parseFloat(String(ing.get('Cantidad_Necesaria') ?? '0').replace(',', '.')) || 0;
-      const totalNecesario = cantNecesaria * cantidad;
+      // Si la receta rinde 100 y se producen 6: usar (6/100) * cantNecesaria
+      const totalNecesario = (cantidad / rindeReceta) * cantNecesaria;
 
       const insumoRow = insumosRows.find(r => r.get('ID') === insumoId);
       if (!insumoRow) throw new Error(`Insumo ${insumoId} no encontrado.`);
@@ -325,6 +330,8 @@ export async function updateProductoConReceta(formData: FormData) {
     const nombre = requireString(formData.get('nombre'), 'Nombre del producto');
     const categoria = requireString(formData.get('categoria'), 'Categoría');
     const margenPct = requirePercentage(formData.get('margen'), 'Margen de ganancia');
+    const rindeReceta = requirePositiveNumber(formData.get('rinde'), 'Rinde de receta');
+    if (rindeReceta === 0) throw new Error('El rinde debe ser mayor a 0.');
 
     // Parsear ingredientes
     const ingredientes: { id: string; qty: number }[] = [];
@@ -353,6 +360,7 @@ export async function updateProductoConReceta(formData: FormData) {
     prodRow.set('Costo_Produccion', costoProduccion.toFixed(2));
     prodRow.set('Margen_Ganancia', String(margenPct / 100));
     prodRow.set('Precio_Venta_Sugerido', precioVentaSugerido.toFixed(2));
+    prodRow.set('Rinde_Receta', String(rindeReceta));
     await prodRow.save();
 
     // Borrar receta vieja y escribir la nueva

@@ -6,13 +6,15 @@ import { addProductoConReceta } from '@/app/actions';
 interface Insumo { id: string; name: string; unit: string; cost: number; }
 interface Ingrediente { insumoId: string; cantidad: string; }
 
-function calcularCosto(ingredientes: Ingrediente[], insumos: Insumo[], margen: number) {
-  const costo = ingredientes.reduce((acc, ing) => {
+function calcularCosto(ingredientes: Ingrediente[], insumos: Insumo[], margen: number, rinde: number) {
+  const costoTotal = ingredientes.reduce((acc, ing) => {
     const ins = insumos.find(i => i.id === ing.insumoId);
     if (!ins) return acc;
     return acc + ins.cost * parseFloat(ing.cantidad || '0');
   }, 0);
-  return { costo, precio: costo * (1 + margen / 100) };
+  // El costo en la receta es por "rinde" unidades. Precio sugerido es por unidad.
+  const costoUnitario = rinde > 0 ? costoTotal / rinde : costoTotal;
+  return { costoTotal, costoUnitario, precio: costoUnitario * (1 + margen / 100) };
 }
 
 export default function RecetaForm({ insumos }: { insumos: Insumo[] }) {
@@ -21,10 +23,11 @@ export default function RecetaForm({ insumos }: { insumos: Insumo[] }) {
     { insumoId: insumos[0]?.id || '', cantidad: '' },
   ]);
   const [margen, setMargen] = useState(30);
+  const [rinde, setRinde] = useState(1);
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const preview = calcularCosto(ingredientes, insumos, margen);
+  const preview = calcularCosto(ingredientes, insumos, margen, rinde);
 
   const addIngrediente = () =>
     setIngredientes(p => [...p, { insumoId: insumos[0]?.id || '', cantidad: '' }]);
@@ -47,10 +50,11 @@ export default function RecetaForm({ insumos }: { insumos: Insumo[] }) {
     const res = await addProductoConReceta(fd);
     setLoading(false);
     if (res.success) {
-      setStatus({ ok: true, msg: `Guardado. Costo: $${res.costoProduccion} · Precio: $${res.precioVenta}` });
+      setStatus({ ok: true, msg: `Guardado. Costo total: $${res.costoProduccion} · Precio unitario: $${res.precioVenta}` });
       formRef.current?.reset();
       setIngredientes([{ insumoId: insumos[0]?.id || '', cantidad: '' }]);
       setMargen(30);
+      setRinde(1);
     } else {
       setStatus({ ok: false, msg: res.error ?? 'Error al guardar' });
     }
@@ -80,6 +84,25 @@ export default function RecetaForm({ insumos }: { insumos: Insumo[] }) {
           <label className="label">Stock inicial</label>
           <input className="input" name="stock" type="number" step="1" defaultValue="0" />
         </div>
+      </div>
+
+      <div className="form-group">
+        <label className="label">
+          Rinde (unidades que produce esta receta): <strong style={{ color: 'var(--primary-dark)' }}>{rinde}</strong>
+        </label>
+        <input
+          className="input"
+          name="rinde"
+          type="number"
+          min="1"
+          step="1"
+          value={rinde}
+          onChange={e => setRinde(Math.max(1, parseInt(e.target.value) || 1))}
+          required
+        />
+        <p style={{ fontSize: '0.78rem', color: 'var(--text-subtle)', marginTop: '0.25rem' }}>
+          Ej: si la receta es para 100 alfajores, poné 100. Al registrar producción de 6, se descuenta 6/100 de cada ingrediente.
+        </p>
       </div>
 
       {/* Ingredientes */}
@@ -127,19 +150,23 @@ export default function RecetaForm({ insumos }: { insumos: Insumo[] }) {
       </div>
 
       {/* Preview */}
-      {preview.costo > 0 && (
+      {preview.costoTotal > 0 && (
         <div style={{
           padding: '1rem', borderRadius: 'var(--r-md)',
           background: 'var(--primary-light)', border: '1px solid var(--border)',
-          display: 'flex', justifyContent: 'space-between',
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem',
         }}>
           <div>
-            <p className="label" style={{ marginBottom: '0.2rem' }}>Costo producción</p>
-            <p style={{ fontWeight: 800, fontSize: '1.1rem' }}>${preview.costo.toFixed(2)}</p>
+            <p className="label" style={{ marginBottom: '0.2rem' }}>Costo total receta</p>
+            <p style={{ fontWeight: 800, fontSize: '1rem' }}>${preview.costoTotal.toFixed(2)}</p>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <p className="label" style={{ marginBottom: '0.2rem' }}>Costo por unidad</p>
+            <p style={{ fontWeight: 800, fontSize: '1rem' }}>${preview.costoUnitario.toFixed(2)}</p>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <p className="label" style={{ marginBottom: '0.2rem' }}>Precio sugerido</p>
-            <p style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--primary-dark)' }}>${preview.precio.toFixed(2)}</p>
+            <p className="label" style={{ marginBottom: '0.2rem' }}>Precio sugerido/u</p>
+            <p style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--primary-dark)' }}>${preview.precio.toFixed(2)}</p>
           </div>
         </div>
       )}

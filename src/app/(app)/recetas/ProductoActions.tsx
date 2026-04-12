@@ -14,21 +14,23 @@ interface Props {
   costo: number;
   precio: number;
   stock: number;
+  rinde: number;
   cap: number | null;
   capColor: string;
   recetaIngredientes: { insumoId: string; cantidad: number }[];
   insumos: Insumo[];
 }
 
-function calcularPreview(ingredientes: Ingrediente[], insumos: Insumo[], margen: number) {
-  const costo = ingredientes.reduce((acc, ing) => {
+function calcularPreview(ingredientes: Ingrediente[], insumos: Insumo[], margen: number, rinde: number) {
+  const costoTotal = ingredientes.reduce((acc, ing) => {
     const ins = insumos.find(i => i.id === ing.insumoId);
     return acc + (ins?.cost ?? 0) * (parseFloat(ing.cantidad.replace(',', '.')) || 0);
   }, 0);
-  return { costo, precio: costo * (1 + margen / 100) };
+  const costoUnitario = rinde > 0 ? costoTotal / rinde : costoTotal;
+  return { costoTotal, costoUnitario, precio: costoUnitario * (1 + margen / 100) };
 }
 
-export function ProductoAcciones({ id, name, categoria, margen, costo, precio, stock, cap, capColor, recetaIngredientes, insumos }: Props) {
+export function ProductoAcciones({ id, name, categoria, margen, costo, precio, stock, rinde, cap, capColor, recetaIngredientes, insumos }: Props) {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,13 +38,14 @@ export function ProductoAcciones({ id, name, categoria, margen, costo, precio, s
 
   const margenInicial = margen > 0 && margen <= 2 ? Math.round(margen * 100) : margen > 0 ? Math.round(margen) : 30;
   const [margenVal, setMargenVal] = useState(margenInicial);
+  const [rindeVal, setRindeVal] = useState(rinde > 0 ? rinde : 1);
   const [ingredientes, setIngredientes] = useState<Ingrediente[]>(
     recetaIngredientes.length > 0
       ? recetaIngredientes.map(i => ({ insumoId: i.insumoId, cantidad: String(i.cantidad) }))
       : [{ insumoId: insumos[0]?.id || '', cantidad: '' }]
   );
 
-  const preview = calcularPreview(ingredientes, insumos, margenVal);
+  const preview = calcularPreview(ingredientes, insumos, margenVal, rindeVal);
 
   const addIng = () => setIngredientes(p => [...p, { insumoId: insumos[0]?.id || '', cantidad: '' }]);
   const removeIng = (idx: number) => setIngredientes(p => p.filter((_, i) => i !== idx));
@@ -100,6 +103,22 @@ export function ProductoAcciones({ id, name, categoria, margen, costo, precio, s
               </div>
             </div>
 
+            <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+              <label className="label">
+                Rinde: <strong style={{ color: 'var(--primary-dark)' }}>{rindeVal} unidades</strong>
+              </label>
+              <input
+                className="input"
+                name="rinde"
+                type="number"
+                min="1"
+                step="1"
+                value={rindeVal}
+                onChange={e => setRindeVal(Math.max(1, parseInt(e.target.value) || 1))}
+                required
+              />
+            </div>
+
             <div style={{ marginBottom: '0.75rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                 <label className="label" style={{ margin: 0 }}>Ingredientes</label>
@@ -139,18 +158,22 @@ export function ProductoAcciones({ id, name, categoria, margen, costo, precio, s
                 style={{ accentColor: 'var(--primary)', width: '100%' }} />
             </div>
 
-            {preview.costo > 0 && (
+            {preview.costoTotal > 0 && (
               <div style={{
                 padding: '0.75rem 1rem', borderRadius: 'var(--r-md)', marginBottom: '0.75rem',
                 background: 'var(--surface)', border: '1px solid var(--border)',
-                display: 'flex', justifyContent: 'space-between',
+                display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem',
               }}>
                 <div>
-                  <p className="label" style={{ marginBottom: '0.1rem' }}>Costo</p>
-                  <p style={{ fontWeight: 800 }}>${preview.costo.toFixed(2)}</p>
+                  <p className="label" style={{ marginBottom: '0.1rem' }}>Costo total</p>
+                  <p style={{ fontWeight: 800 }}>${preview.costoTotal.toFixed(2)}</p>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <p className="label" style={{ marginBottom: '0.1rem' }}>Costo/unidad</p>
+                  <p style={{ fontWeight: 800 }}>${preview.costoUnitario.toFixed(2)}</p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <p className="label" style={{ marginBottom: '0.1rem' }}>Precio sugerido</p>
+                  <p className="label" style={{ marginBottom: '0.1rem' }}>Precio/unidad</p>
                   <p style={{ fontWeight: 800, color: 'var(--primary-dark)' }}>${preview.precio.toFixed(2)}</p>
                 </div>
               </div>
@@ -185,6 +208,7 @@ export function ProductoAcciones({ id, name, categoria, margen, costo, precio, s
       <td style={{ fontWeight: 700, color: 'var(--primary-dark)' }}>${precio.toFixed(2)}</td>
       <td>{stock}</td>
       <td className="hide-mobile">
+        <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)' }}>{rindeVal}u/batch · </span>
         <span style={{ fontWeight: 700, color: capColor }}>
           {cap === null ? '—' : `${cap} u.`}
         </span>

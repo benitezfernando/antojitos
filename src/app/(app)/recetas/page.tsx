@@ -36,6 +36,7 @@ export default async function RecetasPage() {
         margen: parseFloat(r.get('Margen_Ganancia')) || 0,
         precio: parseFloat(r.get('Precio_Venta_Sugerido')) || 0,
         stock: parseFloat(r.get('Stock_Actual')) || 0,
+        rinde: parseFloat(String(r.get('Rinde_Receta') ?? '1').replace(',', '.')) || 1,
       }));
     }
 
@@ -69,11 +70,14 @@ export default async function RecetasPage() {
   const productosConCapacidad = productos.map(prod => {
     const ings = recetas.filter(r => r.prodId === prod.id);
     if (ings.length === 0) return { ...prod, capacidad: null };
+    const rinde = prod.rinde > 0 ? prod.rinde : 1;
+    // Cuántas unidades puedo producir dado el stock de cada insumo
+    // stock_insumo / (cantNecesaria / rinde) = stock_insumo * rinde / cantNecesaria
     const capacidad = Math.floor(
       Math.min(...ings.map(ing => {
         const ins = insumosMap.get(ing.insumoId);
         if (!ins || ing.cantidad === 0) return 0;
-        return ins.stock / ing.cantidad;
+        return (ins.stock * rinde) / ing.cantidad;
       }))
     );
     return { ...prod, capacidad };
@@ -107,10 +111,10 @@ export default async function RecetasPage() {
                   <tr>
                     <th>Producto</th>
                     <th className="hide-mobile">Categoría</th>
-                    <th>Costo</th>
-                    <th>Precio</th>
+                    <th>Costo/u</th>
+                    <th>Precio/u</th>
                     <th>Stock</th>
-                    <th className="hide-mobile">Max. prod.</th>
+                    <th className="hide-mobile">Rinde · Max.</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -128,6 +132,7 @@ export default async function RecetasPage() {
                         costo={prod.costo}
                         precio={prod.precio}
                         stock={prod.stock}
+                        rinde={prod.rinde}
                         cap={cap}
                         capColor={capColor}
                         recetaIngredientes={recetas.filter(r => r.prodId === prod.id).map(r => ({ insumoId: r.insumoId, cantidad: r.cantidad }))}
@@ -176,6 +181,9 @@ export default async function RecetasPage() {
                 }}>
                   <div style={{ background: 'var(--primary)', padding: '0.65rem 1rem' }}>
                     <h3 style={{ color: 'white', fontSize: '0.9rem', fontWeight: 700, margin: 0 }}>{prod.name}</h3>
+                    <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem', margin: '0.15rem 0 0' }}>
+                      Rinde {prod.rinde > 1 ? prod.rinde : 1} unidades
+                    </p>
                   </div>
                   <ul style={{ listStyle: 'none', padding: '0.5rem 1rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                     {ings.map((ing, i) => {
