@@ -14,11 +14,11 @@ export async function addInsumo(formData: FormData) {
 
     await sheet.addRow({
       ID: nextId,
-      Nombre: formData.get('nombre'),
-      Unidad_Medida: formData.get('unidad'),
-      Costo_Unitario: formData.get('costo'),
-      Stock_Actual: formData.get('stock'),
-      Stock_Minimo: formData.get('minStock'),
+      Nombre: String(formData.get('nombre') ?? ''),
+      Unidad_Medida: String(formData.get('unidad') ?? ''),
+      Costo_Unitario: String(formData.get('costo') ?? '0'),
+      Stock_Actual: String(formData.get('stock') ?? '0'),
+      Stock_Minimo: String(formData.get('minStock') ?? '0'),
     });
 
     revalidatePath('/insumos');
@@ -71,12 +71,12 @@ export async function addProductoConReceta(formData: FormData) {
 
     await productosSheet.addRow({
       ID: nextProdId,
-      Nombre: formData.get('nombre'),
-      Categoria: formData.get('categoria'),
+      Nombre: String(formData.get('nombre') ?? ''),
+      Categoria: String(formData.get('categoria') ?? ''),
       Costo_Produccion: costoProduccion.toFixed(2),
-      Margen_Ganancia: margen,
+      Margen_Ganancia: String(margen),
       Precio_Venta_Sugerido: precioVentaSugerido.toFixed(2),
-      Stock_Actual: formData.get('stock') || 0,
+      Stock_Actual: String(formData.get('stock') ?? '0'),
     });
 
     // Create recipe rows
@@ -122,11 +122,11 @@ export async function updateInsumo(formData: FormData) {
     const id = formData.get('id') as string;
     const row = rows.find(r => r.get('ID') === id);
     if (!row) throw new Error("Insumo no encontrado");
-    row.set('Nombre', formData.get('nombre'));
-    row.set('Unidad_Medida', formData.get('unidad'));
-    row.set('Costo_Unitario', formData.get('costo'));
-    row.set('Stock_Actual', formData.get('stock'));
-    row.set('Stock_Minimo', formData.get('minStock'));
+    row.set('Nombre', String(formData.get('nombre') ?? ''));
+    row.set('Unidad_Medida', String(formData.get('unidad') ?? ''));
+    row.set('Costo_Unitario', String(formData.get('costo') ?? '0'));
+    row.set('Stock_Actual', String(formData.get('stock') ?? '0'));
+    row.set('Stock_Minimo', String(formData.get('minStock') ?? '0'));
     await row.save();
     revalidatePath('/insumos');
     revalidatePath('/');
