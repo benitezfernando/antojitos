@@ -1,6 +1,6 @@
 import { getGoogleSheet } from "@/lib/google-sheets";
 import RecetaForm from "./RecetaForm";
-import { DeleteProductoButton } from "./ProductoActions";
+import { ProductoAcciones } from "./ProductoActions";
 
 export const dynamic = 'force-dynamic';
 
@@ -107,7 +107,7 @@ export default async function RecetasPage() {
                   <tr>
                     <th>Producto</th>
                     <th className="hide-mobile">Categoría</th>
-                    <th className="hide-mobile">Costo</th>
+                    <th>Costo</th>
                     <th>Precio</th>
                     <th>Stock</th>
                     <th className="hide-mobile">Max. prod.</th>
@@ -119,21 +119,20 @@ export default async function RecetasPage() {
                     const cap = prod.capacidad;
                     const capColor = cap === 0 ? 'var(--danger)' : cap !== null && cap <= 5 ? 'var(--warning)' : 'var(--success)';
                     return (
-                      <tr key={`${prod.id}-${idx}`}>
-                        <td style={{ fontWeight: 600 }}>{prod.name}</td>
-                        <td className="hide-mobile"><span className="badge badge-neutral">{prod.categoria}</span></td>
-                        <td className="hide-mobile" style={{ color: 'var(--text-muted)' }}>${prod.costo.toFixed(2)}</td>
-                        <td style={{ fontWeight: 700, color: 'var(--primary-dark)' }}>${prod.precio.toFixed(2)}</td>
-                        <td>{prod.stock}</td>
-                        <td className="hide-mobile">
-                          <span style={{ fontWeight: 700, color: capColor }}>
-                            {cap === null ? '—' : `${cap} u.`}
-                          </span>
-                        </td>
-                        <td>
-                          <DeleteProductoButton id={prod.id} name={prod.name} />
-                        </td>
-                      </tr>
+                      <ProductoAcciones
+                        key={`${prod.id}-${idx}`}
+                        id={prod.id}
+                        name={prod.name}
+                        categoria={prod.categoria}
+                        margen={prod.margen}
+                        costo={prod.costo}
+                        precio={prod.precio}
+                        stock={prod.stock}
+                        cap={cap}
+                        capColor={capColor}
+                        recetaIngredientes={recetas.filter(r => r.prodId === prod.id).map(r => ({ insumoId: r.insumoId, cantidad: r.cantidad }))}
+                        insumos={insumos}
+                      />
                     );
                   })}
                 </tbody>

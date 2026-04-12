@@ -309,6 +309,70 @@ export async function registrarVenta(formData: FormData) {
   }
 }
 
+export async function updateProductoConReceta(formData: FormData) {
+  try {
+    const { doc } = await getGoogleSheet();
+
+    const insumosSheet = doc.sheetsByTitle['Insumos'];
+    const productosSheet = doc.sheetsByTitle['Productos'];
+    const recetasSheet = doc.sheetsByTitle['Recetas'];
+
+    if (!insumosSheet || !productosSheet || !recetasSheet) {
+      throw new Error("Faltan pestañas en la base de datos.");
+    }
+
+    const prodId = requireString(formData.get('prodId'), 'ID producto');
+    const nombre = requireString(formData.get('nombre'), 'Nombre del producto');
+    const categoria = requireString(formData.get('categoria'), 'Categoría');
+    const margenPct = requirePercentage(formData.get('margen'), 'Margen de ganancia');
+
+    // Parsear ingredientes
+    const ingredientes: { id: string; qty: number }[] = [];
+    let i = 0;
+    while (formData.get(`insumoId_${i}`)) {
+      const insumoId = requireString(formData.get(`insumoId_${i}`), `ID insumo ${i}`);
+      const qty = requirePositiveNumber(formData.get(`cantidad_${i}`), `Cantidad insumo ${i}`);
+      if (qty === 0) throw new Error(`La cantidad del insumo ${i + 1} debe ser mayor a 0.`);
+      ingredientes.push({ id: insumoId, qty });
+      i++;
+    }
+    if (ingredientes.length === 0) throw new Error('La receta debe tener al menos un ingrediente.');
+
+    // Recalcular costo
+    const insumosRows = await insumosSheet.getRows();
+    const insumosMap = new Map(insumosRows.map(r => [r.get('ID'), parseFloat(r.get('Costo_Unitario')) || 0]));
+    const costoProduccion = ingredientes.reduce((acc, ing) => acc + (insumosMap.get(ing.id) || 0) * ing.qty, 0);
+    const precioVentaSugerido = costoProduccion * (1 + margenPct / 100);
+
+    // Actualizar producto
+    const prodRows = await productosSheet.getRows();
+    const prodRow = prodRows.find(r => r.get('ID') === prodId);
+    if (!prodRow) throw new Error('Producto no encontrado.');
+    prodRow.set('Nombre', nombre);
+    prodRow.set('Categoria', categoria);
+    prodRow.set('Costo_Produccion', costoProduccion.toFixed(2));
+    prodRow.set('Margen_Ganancia', String(margenPct / 100));
+    prodRow.set('Precio_Venta_Sugerido', precioVentaSugerido.toFixed(2));
+    await prodRow.save();
+
+    // Borrar receta vieja y escribir la nueva
+    const recetaRows = await recetasSheet.getRows();
+    for (const r of recetaRows.filter(r => r.get('ID_Producto') === prodId).reverse()) {
+      await r.delete();
+    }
+    for (const ing of ingredientes) {
+      await recetasSheet.addRow({ ID_Producto: prodId, ID_Insumo: ing.id, Cantidad_Necesaria: ing.qty });
+    }
+
+    revalidatePath('/recetas');
+    revalidatePath('/produccion');
+    revalidatePath('/');
+    return { success: true, costoProduccion: costoProduccion.toFixed(2), precioVenta: precioVentaSugerido.toFixed(2) };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Error al actualizar el producto' };
+  }
+}
+
 export async function deleteProducto(id: string) {
   try {
     const { doc } = await getGoogleSheet();
