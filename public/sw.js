@@ -1,15 +1,12 @@
-const CACHE_NAME = 'antojitos-v1';
+const CACHE_NAME = 'antojitos-v2';
 
-// Recursos estáticos a cachear inmediatamente al instalar
+// Solo cachear assets verdaderamente estáticos (no páginas de la app)
 const STATIC_ASSETS = [
-  '/',
-  '/insumos',
-  '/recetas',
   '/manifest.json',
   '/ico.jpeg',
 ];
 
-// Instalar: precachear assets críticos
+// Instalar: precachear solo assets estáticos
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
@@ -49,24 +46,26 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Para navegación (páginas HTML): siempre network, nunca cache
+  if (event.request.mode === 'navigate') {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Cachear respuesta exitosa
-        if (response.ok) {
+        // Solo cachear assets estáticos (imágenes, manifest)
+        if (response.ok && !url.pathname.endsWith('.html')) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
         return response;
       })
       .catch(() => {
-        // Sin red: intentar desde cache
+        // Sin red: intentar desde cache solo para assets estáticos
         return caches.match(event.request).then((cached) => {
           if (cached) return cached;
-          // Fallback para navegación: servir la página raíz cacheada
-          if (event.request.mode === 'navigate') {
-            return caches.match('/');
-          }
           return new Response('Sin conexión', { status: 503 });
         });
       })

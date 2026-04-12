@@ -26,8 +26,8 @@ export async function login(formData: FormData): Promise<void> {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
       path: '/',
+      // Sin maxAge ni expires → cookie de sesión: se borra al cerrar el navegador
     });
     const safeRedirect = redirectTo.startsWith('/') ? redirectTo : '/';
     redirect(safeRedirect);
