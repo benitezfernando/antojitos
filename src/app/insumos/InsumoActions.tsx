@@ -14,14 +14,25 @@ interface Insumo {
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  padding: '0.4rem 0.5rem',
-  borderRadius: '6px',
-  border: '1px solid var(--glass-border)',
-  backgroundColor: 'rgba(255,255,255,0.85)',
+  padding: '0.65rem 0.75rem',
+  borderRadius: '8px',
+  border: '1.5px solid var(--glass-border)',
+  backgroundColor: 'rgba(255,255,255,0.9)',
   fontFamily: 'inherit',
-  fontSize: '0.85rem',
+  fontSize: '1rem',
   outline: 'none',
   boxSizing: 'border-box',
+  WebkitAppearance: 'none',
+};
+
+const labelStyle: React.CSSProperties = {
+  fontSize: '0.75rem',
+  fontWeight: '600',
+  color: 'var(--text-muted)',
+  display: 'block',
+  marginBottom: '4px',
+  textTransform: 'uppercase',
+  letterSpacing: '0.5px',
 };
 
 export function InsumoRow({ insumo }: { insumo: Insumo }) {
@@ -72,21 +83,17 @@ export function InsumoRow({ insumo }: { insumo: Insumo }) {
   if (editing) {
     return (
       <tr style={{ borderBottom: '1px solid var(--glass-border)', backgroundColor: 'rgba(141,110,99,0.04)' }}>
-        <td colSpan={6} style={{ padding: '0.75rem 1rem' }}>
+        <td colSpan={6} style={{ padding: '1rem' }}>
           <form onSubmit={handleSave}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr auto',
-              gap: '0.5rem',
-              alignItems: 'center',
-            }}>
+            {/* Row 1: Nombre + Unidad */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
               <div>
-                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Nombre</label>
+                <label style={labelStyle}>Nombre</label>
                 <input style={inputStyle} value={values.nombre}
                   onChange={e => setValues(v => ({ ...v, nombre: e.target.value }))} />
               </div>
               <div>
-                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Unidad</label>
+                <label style={labelStyle}>Unidad</label>
                 <select style={inputStyle} value={values.unidad}
                   onChange={e => setValues(v => ({ ...v, unidad: e.target.value }))}>
                   <option value="kg">kg</option>
@@ -96,37 +103,47 @@ export function InsumoRow({ insumo }: { insumo: Insumo }) {
                   <option value="unidad">unidad</option>
                 </select>
               </div>
+            </div>
+            {/* Row 2: Costo + Stock + Mínimo */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
               <div>
-                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Costo $</label>
-                <input style={inputStyle} type="number" step="0.01" value={values.costo}
+                <label style={labelStyle}>Costo $</label>
+                <input style={inputStyle}
+                  type="text" inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*"
+                  value={values.costo}
                   onChange={e => setValues(v => ({ ...v, costo: e.target.value }))} />
               </div>
               <div>
-                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Stock</label>
-                <input style={inputStyle} type="number" step="0.01" value={values.stock}
+                <label style={labelStyle}>Stock actual</label>
+                <input style={inputStyle}
+                  type="text" inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*"
+                  value={values.stock}
                   onChange={e => setValues(v => ({ ...v, stock: e.target.value }))} />
               </div>
               <div>
-                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Mínimo</label>
-                <input style={inputStyle} type="number" step="0.01" value={values.minStock}
+                <label style={labelStyle}>Stock mínimo</label>
+                <input style={inputStyle}
+                  type="text" inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*"
+                  value={values.minStock}
                   onChange={e => setValues(v => ({ ...v, minStock: e.target.value }))} />
               </div>
-              <div style={{ display: 'flex', gap: '0.4rem', marginTop: '14px' }}>
-                <button type="submit" disabled={loading} style={{
-                  padding: '0.4rem 0.85rem', borderRadius: '6px', border: 'none',
-                  cursor: 'pointer', backgroundColor: 'var(--primary)', color: 'white',
-                  fontWeight: '600', fontSize: '0.85rem', whiteSpace: 'nowrap',
-                }}>
-                  {loading ? '...' : '✓ Guardar'}
-                </button>
-                <button type="button" onClick={() => setEditing(false)} style={{
-                  padding: '0.4rem 0.75rem', borderRadius: '6px',
-                  border: '1px solid var(--glass-border)', cursor: 'pointer',
-                  backgroundColor: 'transparent', fontSize: '0.85rem', whiteSpace: 'nowrap',
-                }}>
-                  Cancelar
-                </button>
-              </div>
+            </div>
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: '0.6rem' }}>
+              <button type="submit" disabled={loading} style={{
+                flex: 1, padding: '0.7rem', borderRadius: '8px', border: 'none',
+                cursor: 'pointer', backgroundColor: 'var(--primary)', color: 'white',
+                fontWeight: '700', fontSize: '1rem',
+              }}>
+                {loading ? 'Guardando...' : '✓ Guardar'}
+              </button>
+              <button type="button" onClick={() => setEditing(false)} style={{
+                flex: 1, padding: '0.7rem', borderRadius: '8px',
+                border: '1.5px solid var(--glass-border)', cursor: 'pointer',
+                backgroundColor: 'transparent', fontSize: '1rem', fontWeight: '600',
+              }}>
+                Cancelar
+              </button>
             </div>
           </form>
         </td>
