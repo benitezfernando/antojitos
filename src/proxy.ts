@@ -6,13 +6,20 @@ const SESSION_COOKIE = 'antojitos_session_v2';
 const PUBLIC_PATHS = ['/login'];
 const PUBLIC_API_PATHS = ['/api/init-db', '/api/seed-db', '/api/test-db'];
 
+function noCache(res: NextResponse): NextResponse {
+  res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.headers.set('Pragma', 'no-cache');
+  return res;
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Assets estáticos — no tocar
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
-    pathname.match(/\.(jpeg|jpg|png|gif|svg|ico|webp)$/)
+    pathname.match(/\.(jpeg|jpg|png|gif|svg|ico|webp|js|css|woff2?)$/)
   ) {
     return NextResponse.next();
   }
@@ -26,7 +33,7 @@ export function proxy(request: NextRequest) {
     if (session?.value === 'authenticated') {
       return NextResponse.redirect(new URL('/', request.url));
     }
-    return NextResponse.next();
+    return noCache(NextResponse.next());
   }
 
   const session = request.cookies.get(SESSION_COOKIE);
@@ -36,7 +43,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  return noCache(NextResponse.next());
 }
 
 export const config = {
