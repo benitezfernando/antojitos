@@ -1,0 +1,51 @@
+import { NextResponse } from 'next/server';
+import { getGoogleSheet } from '@/lib/google-sheets';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET() {
+  try {
+    const { doc } = await getGoogleSheet();
+    
+    // 1. Rename the first sheet to 'Insumos' if it's the default Sheet1
+    const firstSheet = doc.sheetsByIndex[0];
+    if (firstSheet.title !== 'Insumos' && !doc.sheetsByTitle['Insumos']) {
+      await firstSheet.updateProperties({ title: 'Insumos' });
+    }
+    const insumosSheet = doc.sheetsByTitle['Insumos'] || firstSheet;
+    await insumosSheet.setHeaderRow(['ID', 'Nombre', 'Unidad_Medida', 'Costo_Unitario', 'Stock_Actual', 'Stock_Minimo']);
+
+    // 2. Create 'Productos' sheet
+    let productosSheet = doc.sheetsByTitle['Productos'];
+    if (!productosSheet) {
+      productosSheet = await doc.addSheet({ title: 'Productos' });
+    }
+    await productosSheet.setHeaderRow(['ID', 'Nombre', 'Categoria', 'Costo_Produccion', 'Margen_Ganancia', 'Precio_Venta_Sugerido', 'Stock_Actual']);
+
+    // 3. Create 'Recetas' sheet
+    let recetasSheet = doc.sheetsByTitle['Recetas'];
+    if (!recetasSheet) {
+      recetasSheet = await doc.addSheet({ title: 'Recetas' });
+    }
+    await recetasSheet.setHeaderRow(['ID_Producto', 'ID_Insumo', 'Cantidad_Necesaria']);
+
+    // 4. Create 'Configuracion' sheet
+    let configSheet = doc.sheetsByTitle['Configuracion'];
+    if (!configSheet) {
+      configSheet = await doc.addSheet({ title: 'Configuracion' });
+      await configSheet.setHeaderRow(['Clave', 'Valor']);
+      await configSheet.addRow(['MargenGlobalPorcentaje', '0.30']);
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Base de datos inicializada correctamente con todas las pestañas.'
+    });
+  } catch (error: any) {
+    console.error("Init DB Error:", error);
+    return NextResponse.json({ 
+      success: false, 
+      error: error.message 
+    }, { status: 500 });
+  }
+}
