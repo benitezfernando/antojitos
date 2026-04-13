@@ -3,8 +3,8 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-const VALID_USER = process.env.ADMIN_USERNAME ?? '';
-const VALID_PASS = process.env.ADMIN_PASSWORD ?? '';
+const VALID_USER = (process.env.ADMIN_USERNAME ?? '').replace(/^["']|["']$/g, '').trim();
+const VALID_PASS = (process.env.ADMIN_PASSWORD ?? '').replace(/^["']|["']$/g, '').trim();
 const SESSION_COOKIE = 'antojitos_session_v2';
 
 if (!VALID_USER || !VALID_PASS) {
