@@ -3,6 +3,7 @@ import { Outfit } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 import InstallPrompt from "@/components/InstallPrompt";
+import NavigationProgress from "@/components/NavigationProgress";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -36,6 +37,7 @@ export default function RootLayout({
   return (
     <html lang="es" className={outfit.className} suppressHydrationWarning>
       <body>
+        <NavigationProgress />
         <ServiceWorkerRegistrar />
         <InstallPrompt />
         {children}
