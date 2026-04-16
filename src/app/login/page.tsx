@@ -1,4 +1,5 @@
 import { login } from '@/app/auth-actions';
+import PasswordInput from './PasswordInput';
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; redirect?: string }> }) {
   const params = await searchParams;
@@ -68,22 +69,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <label style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: '600' }}>Contraseña</label>
-            <input
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              placeholder="••••••••"
-              style={{
-                padding: '0.85rem 1rem',
-                borderRadius: '10px',
-                border: '1px solid var(--glass-border)',
-                backgroundColor: 'rgba(255,255,255,0.6)',
-                fontSize: '1rem',
-                outline: 'none',
-                fontFamily: 'inherit'
-              }}
-            />
+            <PasswordInput />
           </div>
 
           <button
