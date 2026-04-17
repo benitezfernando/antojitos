@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { deleteProducto, updateProductoConReceta } from '@/app/actions';
 
 interface Insumo { id: string; name: string; unit: string; cost: number; }
@@ -31,6 +32,7 @@ function calcularPreview(ingredientes: Ingrediente[], insumos: Insumo[], margen:
 }
 
 export function ProductoAcciones({ id, name, categoria, margen, costo, precio, stock, rinde, cap, capColor, recetaIngredientes, insumos }: Props) {
+  const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +74,7 @@ export function ProductoAcciones({ id, name, categoria, margen, costo, precio, s
     setLoading(false);
     if (res.success) {
       setStatus({ costo: res.costoProduccion!, precio: res.precioVenta! });
-      setTimeout(() => { setEditing(false); setStatus(null); }, 1500);
+      setTimeout(() => { setEditing(false); setStatus(null); router.refresh(); }, 1500);
     } else {
       setError(res.error ?? 'Error al guardar');
     }
