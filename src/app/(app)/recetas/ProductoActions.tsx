@@ -71,7 +71,7 @@ export function ProductoAcciones({ id, name, categoria, margen, costo, precio, s
         ? recetaIngredientes.map(i => ({ insumoId: i.insumoId, cantidad: String(i.cantidad), unidad: i.unidad || insumos.find(ins => ins.id === i.insumoId)?.unit || 'u' }))
         : [{ insumoId: insumos[0]?.id || '', cantidad: '', unidad: insumos[0]?.unit || '' }]
     );
-  }, [margen, rinde, recetaIngredientes, editing]);
+  }, [margen, rinde, recetaIngredientes, insumos, editing]);
 
   const rindeNum = parseFloat(rindeVal.replace(',', '.')) || 0;
   const preview = calcularPreview(ingredientes, insumos, margenVal, rindeNum);
