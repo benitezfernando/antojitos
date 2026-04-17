@@ -31,7 +31,10 @@ export async function GET() {
     if (!recetasSheet) {
       recetasSheet = await doc.addSheet({ title: 'Recetas' });
     }
-    await recetasSheet.setHeaderRow(['ID_Producto', 'ID_Insumo', 'Cantidad_Necesaria']);
+    const existingRecetasHeaders = recetasSheet.headerValues ?? [];
+    const baseRecetasHeaders = ['ID_Producto', 'ID_Insumo', 'Cantidad_Necesaria', 'Unidad'];
+    const mergedRecetasHeaders = Array.from(new Set([...baseRecetasHeaders, ...existingRecetasHeaders]));
+    await recetasSheet.setHeaderRow(mergedRecetasHeaders);
 
     // 4. Create 'Configuracion' sheet
     let configSheet = doc.sheetsByTitle['Configuracion'];

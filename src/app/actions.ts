@@ -126,6 +126,18 @@ export async function addProductoConReceta(formData: FormData) {
     const margen = margenPct / 100;
     const precioVentaSugerido = costoProduccion * (1 + margen);
 
+    // Asegurar columnas necesarias en el header
+    await productosSheet.loadHeaderRow();
+    const currentProdHeaders: string[] = productosSheet.headerValues ?? [];
+    if (!currentProdHeaders.includes('Rinde_Receta')) {
+      await productosSheet.setHeaderRow([...currentProdHeaders, 'Rinde_Receta']);
+    }
+    await recetasSheet.loadHeaderRow();
+    const currentRecetasHeaders: string[] = recetasSheet.headerValues ?? [];
+    if (!currentRecetasHeaders.includes('Unidad')) {
+      await recetasSheet.setHeaderRow([...currentRecetasHeaders, 'Unidad']);
+    }
+
     const nextProdId = uniqueId('PROD');
 
     await productosSheet.addRow({
@@ -381,6 +393,13 @@ export async function updateProductoConReceta(formData: FormData) {
     const costoProduccion = costoTotalReceta / rindeReceta;
     const precioVentaSugerido = costoProduccion * (1 + margenPct / 100);
 
+    // Asegurar que Rinde_Receta existe en el header antes de guardar
+    await productosSheet.loadHeaderRow();
+    const currentHeaders: string[] = productosSheet.headerValues ?? [];
+    if (!currentHeaders.includes('Rinde_Receta')) {
+      await productosSheet.setHeaderRow([...currentHeaders, 'Rinde_Receta']);
+    }
+
     // Actualizar producto
     const prodRows = await productosSheet.getRows();
     const prodRow = prodRows.find(r => r.get('ID') === prodId);
@@ -392,6 +411,13 @@ export async function updateProductoConReceta(formData: FormData) {
     prodRow.set('Precio_Venta_Sugerido', precioVentaSugerido.toFixed(2));
     prodRow.set('Rinde_Receta', String(rindeReceta));
     await prodRow.save();
+
+    // Asegurar columna Unidad en Recetas
+    await recetasSheet.loadHeaderRow();
+    const currentRecHeaders: string[] = recetasSheet.headerValues ?? [];
+    if (!currentRecHeaders.includes('Unidad')) {
+      await recetasSheet.setHeaderRow([...currentRecHeaders, 'Unidad']);
+    }
 
     // Borrar receta vieja y escribir la nueva
     const recetaRows = await recetasSheet.getRows();
