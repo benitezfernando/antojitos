@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { deleteProducto, updateProductoConReceta } from '@/app/actions';
 
@@ -44,8 +44,19 @@ function calcularPreview(ingredientes: Ingrediente[], insumos: Insumo[], margen:
   return { costoTotal, costoUnitario, precio: costoUnitario * (1 + margen / 100) };
 }
 
-export function ProductoAcciones({ id, name, categoria, margen, costo, precio, stock, rinde, cap, capColor, recetaIngredientes, insumos }: Props) {
+export function ProductoAcciones(props: Props) {
   const router = useRouter();
+  const [saveKey, setSaveKey] = useState(0);
+
+  const handleSaved = () => {
+    setSaveKey(k => k + 1);
+    router.refresh();
+  };
+
+  return <ProductoAccionesInner key={saveKey} {...props} onSaved={handleSaved} />;
+}
+
+function ProductoAccionesInner({ id, name, categoria, margen, costo, precio, stock, rinde, cap, capColor, recetaIngredientes, insumos, onSaved }: Props & { onSaved: () => void }) {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,19 +70,6 @@ export function ProductoAcciones({ id, name, categoria, margen, costo, precio, s
       ? recetaIngredientes.map(i => ({ insumoId: i.insumoId, cantidad: String(i.cantidad), unidad: i.unidad || insumos.find(ins => ins.id === i.insumoId)?.unit || 'u' }))
       : [{ insumoId: insumos[0]?.id || '', cantidad: '', unidad: insumos[0]?.unit || '' }]
   );
-
-  // Sincroniza estado con props frescas tras router.refresh()
-  useEffect(() => {
-    if (editing) return;
-    const m = margen > 0 && margen <= 2 ? Math.round(margen * 100) : margen > 0 ? Math.round(margen) : 30;
-    setMargenVal(m);
-    setRindeVal(String(rinde > 0 ? rinde : 1));
-    setIngredientes(
-      recetaIngredientes.length > 0
-        ? recetaIngredientes.map(i => ({ insumoId: i.insumoId, cantidad: String(i.cantidad), unidad: i.unidad || insumos.find(ins => ins.id === i.insumoId)?.unit || 'u' }))
-        : [{ insumoId: insumos[0]?.id || '', cantidad: '', unidad: insumos[0]?.unit || '' }]
-    );
-  }, [margen, rinde, recetaIngredientes, insumos, editing]);
 
   const rindeNum = parseFloat(rindeVal.replace(',', '.')) || 0;
   const preview = calcularPreview(ingredientes, insumos, margenVal, rindeNum);
@@ -107,7 +105,7 @@ export function ProductoAcciones({ id, name, categoria, margen, costo, precio, s
     setLoading(false);
     if (res.success) {
       setStatus({ costo: res.costoProduccion!, precio: res.precioVenta! });
-      setTimeout(() => { setEditing(false); setStatus(null); router.refresh(); }, 1500);
+      setTimeout(() => { setEditing(false); setStatus(null); onSaved(); }, 1500);
     } else {
       setError(res.error ?? 'Error al guardar');
     }
