@@ -105,8 +105,12 @@ export default async function ProduccionPage() {
     errorMsg = `Error de conexión: ${error.message}`;
   }
 
-  const hoy = new Date().toISOString().slice(0, 10);
-  const ventasHoy = historialVentas.filter(v => v.fecha.startsWith(hoy));
+  const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
+  const ventasHoy = historialVentas.filter(v => {
+    if (!v.fecha) return false;
+    const dia = new Date(v.fecha).toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
+    return dia === hoy;
+  });
   const totalVentasHoy = ventasHoy.reduce((acc, v) => acc + v.total, 0);
   const unidadesHoy = ventasHoy.reduce((acc, v) => acc + v.cantidad, 0);
 

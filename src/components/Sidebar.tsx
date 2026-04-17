@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { logout } from '@/app/auth-actions';
 
 const navLinks = [
   { href: '/',            label: 'Dashboard',          icon: '◈' },
@@ -74,6 +75,18 @@ export default function Sidebar() {
             </Link>
           ))}
         </nav>
+
+        {/* Logout */}
+        <form action={logout} style={{ marginTop: '0.5rem' }}>
+          <button
+            type="submit"
+            className="btn btn-ghost"
+            style={{ width: '100%', justifyContent: 'center', fontSize: '0.85rem' }}
+            aria-label="Cerrar sesión"
+          >
+            ⎋ Cerrar sesión
+          </button>
+        </form>
 
         {/* Footer */}
         <div className="sidebar-footer">v1.0.0 · Next.js 16</div>

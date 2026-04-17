@@ -208,7 +208,7 @@ export function ProductoAcciones({ id, name, categoria, margen, costo, precio, s
       <td style={{ fontWeight: 700, color: 'var(--primary-dark)' }}>${precio.toFixed(2)}</td>
       <td>{stock}</td>
       <td className="hide-mobile">
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)' }}>{rindeVal}u/batch · </span>
+        <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)' }}>{rinde}u/batch · </span>
         <span style={{ fontWeight: 700, color: capColor }}>
           {cap === null ? '—' : `${cap} u.`}
         </span>
@@ -239,18 +239,3 @@ export function ProductoAcciones({ id, name, categoria, margen, costo, precio, s
   );
 }
 
-// Kept for backward compat — not used anymore but avoids import errors
-export function DeleteProductoButton({ id, name }: { id: string; name: string }) {
-  const [loading, setLoading] = useState(false);
-  const handleDelete = async () => {
-    if (!confirm(`¿Eliminar el producto "${name}" y toda su receta?`)) return;
-    setLoading(true);
-    await deleteProducto(id);
-  };
-  return (
-    <button onClick={handleDelete} disabled={loading}
-      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', padding: '0.3rem 0.6rem' }}>
-      {loading ? '...' : '🗑 Eliminar'}
-    </button>
-  );
-}

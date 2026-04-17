@@ -20,7 +20,11 @@ export async function GET() {
     if (!productosSheet) {
       productosSheet = await doc.addSheet({ title: 'Productos' });
     }
-    await productosSheet.setHeaderRow(['ID', 'Nombre', 'Categoria', 'Costo_Produccion', 'Margen_Ganancia', 'Precio_Venta_Sugerido', 'Stock_Actual']);
+    // Preservar columnas existentes (ej: Rinde_Receta) al recrear el header.
+    const existingProdHeaders = productosSheet.headerValues ?? [];
+    const baseProdHeaders = ['ID', 'Nombre', 'Categoria', 'Costo_Produccion', 'Margen_Ganancia', 'Precio_Venta_Sugerido', 'Stock_Actual', 'Rinde_Receta'];
+    const mergedProdHeaders = Array.from(new Set([...baseProdHeaders, ...existingProdHeaders]));
+    await productosSheet.setHeaderRow(mergedProdHeaders);
 
     // 3. Create 'Recetas' sheet
     let recetasSheet = doc.sheetsByTitle['Recetas'];

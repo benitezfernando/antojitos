@@ -14,12 +14,20 @@ export default function InstallPrompt() {
   useEffect(() => {
     const handler = (e: Event) => {
       e.preventDefault();
+      // Respetá "Ahora no": no mostrar de nuevo por 7 días.
+      const dismissedAt = Number(localStorage.getItem('antojitos_install_dismissed_at') || '0');
+      if (dismissedAt && Date.now() - dismissedAt < 7 * 24 * 60 * 60 * 1000) return;
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setVisible(true);
     };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
+
+  function handleDismiss() {
+    localStorage.setItem('antojitos_install_dismissed_at', String(Date.now()));
+    setVisible(false);
+  }
 
   async function handleInstall() {
     if (!deferredPrompt) return;
@@ -38,10 +46,10 @@ export default function InstallPrompt() {
       left: '50%',
       transform: 'translateX(-50%)',
       zIndex: 9999,
-      background: 'var(--surface-color)',
+      background: 'var(--surface)',
       backdropFilter: 'blur(12px)',
       WebkitBackdropFilter: 'blur(12px)',
-      border: '1px solid var(--glass-border)',
+      border: '1px solid var(--border)',
       borderRadius: '14px',
       padding: '1rem 1.25rem',
       display: 'flex',
@@ -66,7 +74,7 @@ export default function InstallPrompt() {
           Instalar
         </button>
         <button
-          onClick={() => setVisible(false)}
+          onClick={handleDismiss}
           style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}
         >
           Ahora no

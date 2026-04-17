@@ -4,7 +4,7 @@ export default function AcercaDePage() {
   return (
     <div className="fade-in" style={{ padding: '2rem', width: '100%', maxWidth: '900px', margin: '0 auto' }}>
       <header style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2.5rem', color: 'var(--text-main)', marginBottom: '0.25rem' }}>Acerca de</h1>
+        <h1 style={{ fontSize: '2.5rem', color: 'var(--text)', marginBottom: '0.25rem' }}>Acerca de</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>Información del sistema</p>
       </header>
 

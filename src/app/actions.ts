@@ -3,6 +3,13 @@
 import { getGoogleSheet } from "@/lib/google-sheets";
 import { revalidatePath } from "next/cache";
 
+// --- Generación de IDs a prueba de colisiones (no depende de rows.length) ---
+function uniqueId(prefix: string): string {
+  const ts = Date.now().toString(36).toUpperCase();
+  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `${prefix}-${ts}${rand}`;
+}
+
 // --- Helpers de validación ---
 function requireString(value: FormDataEntryValue | null, field: string): string {
   const str = (value as string ?? '').trim();
@@ -35,11 +42,8 @@ export async function addInsumo(formData: FormData): Promise<{ success: boolean;
     const sheet = doc.sheetsByTitle['Insumos'];
     if (!sheet) throw new Error("No se encontró la pestaña Insumos");
 
-    const rows = await sheet.getRows();
-    const nextId = `INS-${String(rows.length + 1).padStart(3, '0')}`;
-
     await sheet.addRow({
-      ID: nextId,
+      ID: uniqueId('INS'),
       Nombre: nombre,
       Unidad_Medida: unidad,
       Costo_Unitario: String(costo),
@@ -102,9 +106,7 @@ export async function addProductoConReceta(formData: FormData) {
     const margen = margenPct / 100;
     const precioVentaSugerido = costoProduccion * (1 + margen);
 
-    // Create product
-    const prodRows = await productosSheet.getRows();
-    const nextProdId = `PROD-${String(prodRows.length + 1).padStart(3, '0')}`;
+    const nextProdId = uniqueId('PROD');
 
     await productosSheet.addRow({
       ID: nextProdId,
@@ -237,10 +239,8 @@ export async function registrarProduccion(formData: FormData) {
     await prodRow.save();
 
     // Registrar en hoja Produccion
-    const prodRegistroRows = await produccionSheet.getRows();
-    const nextId = `PROD-REG-${String(prodRegistroRows.length + 1).padStart(4, '0')}`;
     await produccionSheet.addRow({
-      ID: nextId,
+      ID: uniqueId('PROD-REG'),
       ID_Producto: productoId,
       Nombre_Producto: nombreProducto,
       Cantidad: String(cantidad),
@@ -284,6 +284,9 @@ export async function registrarVenta(formData: FormData) {
     const precioUnitario = parseFloat(prodRow.get('Precio_Venta_Sugerido')) || 0;
     const stockActual = parseFloat(prodRow.get('Stock_Actual')) || 0;
 
+    if (precioUnitario <= 0) {
+      throw new Error(`"${nombreProducto}" no tiene precio de venta definido. Editá el producto antes de registrar una venta.`);
+    }
     if (stockActual < cantidad) {
       throw new Error(`Stock insuficiente: tenés ${stockActual} unidades de "${nombreProducto}".`);
     }
@@ -293,11 +296,9 @@ export async function registrarVenta(formData: FormData) {
     await prodRow.save();
 
     // Registrar en hoja Ventas
-    const ventaRows = await ventasSheet.getRows();
-    const nextId = `VTA-${String(ventaRows.length + 1).padStart(4, '0')}`;
     const total = precioUnitario * cantidad;
     await ventasSheet.addRow({
-      ID: nextId,
+      ID: uniqueId('VTA'),
       ID_Producto: productoId,
       Nombre_Producto: nombreProducto,
       Cantidad: String(cantidad),

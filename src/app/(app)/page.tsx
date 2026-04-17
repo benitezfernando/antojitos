@@ -46,9 +46,16 @@ export default async function Home() {
 
     const ventasSheet = doc.sheetsByTitle['Ventas'];
     if (ventasSheet) {
-      const hoy = new Date().toISOString().slice(0, 10);
+      // Fecha local Argentina (UTC-3). `Fecha` se guarda en ISO UTC; comparamos por el día
+      // según la zona horaria del negocio, no la del servidor.
+      const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
       const vRows = await ventasSheet.getRows();
-      const ventasHoy = vRows.filter(r => (r.get('Fecha') || '').startsWith(hoy));
+      const ventasHoy = vRows.filter(r => {
+        const fecha = r.get('Fecha') || '';
+        if (!fecha) return false;
+        const diaVenta = new Date(fecha).toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
+        return diaVenta === hoy;
+      });
       totalVentasHoy = ventasHoy.reduce((acc, r) => acc + (parseFloat(r.get('Total')) || 0), 0);
       unidadesVendidasHoy = ventasHoy.reduce((acc, r) => acc + (parseFloat(r.get('Cantidad')) || 0), 0);
     }

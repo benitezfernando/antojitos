@@ -4,7 +4,6 @@ import type { NextRequest } from 'next/server';
 const SESSION_COOKIE = 'antojitos_session_v2';
 
 const PUBLIC_PATHS = ['/login'];
-const PUBLIC_API_PATHS = ['/api/init-db', '/api/seed-db', '/api/test-db'];
 
 function noCache(res: NextResponse): NextResponse {
   res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -24,8 +23,13 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (PUBLIC_API_PATHS.some(p => pathname.startsWith(p))) {
-    return NextResponse.next();
+  // APIs administrativas exigen sesión igual que las páginas.
+  if (pathname.startsWith('/api/')) {
+    const session = request.cookies.get(SESSION_COOKIE);
+    if (session?.value !== 'authenticated') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    return noCache(NextResponse.next());
   }
 
   if (PUBLIC_PATHS.includes(pathname)) {

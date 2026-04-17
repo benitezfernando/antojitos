@@ -8,6 +8,7 @@ export default function PasswordInput() {
   return (
     <div style={{ position: 'relative' }}>
       <input
+        id="login-password"
         name="password"
         type={show ? 'text' : 'password'}
         autoComplete="current-password"
@@ -17,7 +18,7 @@ export default function PasswordInput() {
           width: '100%',
           padding: '0.85rem 3rem 0.85rem 1rem',
           borderRadius: '10px',
-          border: '1px solid var(--glass-border)',
+          border: '1px solid var(--border)',
           backgroundColor: 'rgba(255,255,255,0.6)',
           fontSize: '1rem',
           outline: 'none',

@@ -13,7 +13,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       alignItems: 'center',
       justifyContent: 'center',
       padding: '1rem',
-      background: 'var(--bg-color)',
+      background: 'var(--bg)',
       backgroundImage: `
         radial-gradient(at 0% 0%, rgba(255,183,178,0.2) 0px, transparent 50%),
         radial-gradient(at 100% 100%, rgba(141,110,99,0.15) 0px, transparent 50%)`
@@ -48,8 +48,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <input type="hidden" name="redirectTo" value={redirectTo} />
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <label style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: '600' }}>Usuario</label>
+            <label htmlFor="login-username" style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: '600' }}>Usuario</label>
             <input
+              id="login-username"
               name="username"
               type="text"
               autoComplete="username"
@@ -58,7 +59,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               style={{
                 padding: '0.85rem 1rem',
                 borderRadius: '10px',
-                border: '1px solid var(--glass-border)',
+                border: '1px solid var(--border)',
                 backgroundColor: 'rgba(255,255,255,0.6)',
                 fontSize: '1rem',
                 outline: 'none',
@@ -68,7 +69,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <label style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: '600' }}>Contraseña</label>
+            <label htmlFor="login-password" style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: '600' }}>Contraseña</label>
             <PasswordInput />
           </div>
 
