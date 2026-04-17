@@ -4,13 +4,25 @@ import { useRef, useState } from 'react';
 import { addProductoConReceta } from '@/app/actions';
 
 interface Insumo { id: string; name: string; unit: string; cost: number; }
-interface Ingrediente { insumoId: string; cantidad: string; }
+interface Ingrediente { insumoId: string; cantidad: string; unidad: string; }
+
+function factorConversion(unidadInsumo: string, unidadReceta: string): number {
+  const u1 = unidadInsumo.toLowerCase().trim();
+  const u2 = unidadReceta.toLowerCase().trim();
+  if (u1 === u2) return 1;
+  if (u1 === 'kg' && u2 === 'g') return 0.001;
+  if (u1 === 'g' && u2 === 'kg') return 1000;
+  if (u1 === 'lt' && u2 === 'ml') return 0.001;
+  if (u1 === 'ml' && u2 === 'lt') return 1000;
+  return 1;
+}
 
 function calcularCosto(ingredientes: Ingrediente[], insumos: Insumo[], margen: number, rinde: number) {
   const costoTotal = ingredientes.reduce((acc, ing) => {
     const ins = insumos.find(i => i.id === ing.insumoId);
     if (!ins) return acc;
-    return acc + ins.cost * parseFloat(ing.cantidad || '0');
+    const factor = factorConversion(ins.unit, ing.unidad);
+    return acc + ins.cost * parseFloat(ing.cantidad || '0') * factor;
   }, 0);
   // El costo en la receta es por "rinde" unidades. Precio sugerido es por unidad.
   const costoUnitario = rinde > 0 ? costoTotal / rinde : costoTotal;
@@ -20,7 +32,7 @@ function calcularCosto(ingredientes: Ingrediente[], insumos: Insumo[], margen: n
 export default function RecetaForm({ insumos }: { insumos: Insumo[] }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [ingredientes, setIngredientes] = useState<Ingrediente[]>([
-    { insumoId: insumos[0]?.id || '', cantidad: '' },
+    { insumoId: insumos[0]?.id || '', cantidad: '', unidad: insumos[0]?.unit || 'u' },
   ]);
   const [margen, setMargen] = useState(30);
   const [rinde, setRinde] = useState(1);
@@ -30,7 +42,7 @@ export default function RecetaForm({ insumos }: { insumos: Insumo[] }) {
   const preview = calcularCosto(ingredientes, insumos, margen, rinde);
 
   const addIngrediente = () =>
-    setIngredientes(p => [...p, { insumoId: insumos[0]?.id || '', cantidad: '' }]);
+    setIngredientes(p => [...p, { insumoId: insumos[0]?.id || '', cantidad: '', unidad: insumos[0]?.unit || 'u' }]);
 
   const removeIngrediente = (idx: number) =>
     setIngredientes(p => p.filter((_, i) => i !== idx));
@@ -46,13 +58,14 @@ export default function RecetaForm({ insumos }: { insumos: Insumo[] }) {
     ingredientes.forEach((ing, i) => {
       fd.set(`insumoId_${i}`, ing.insumoId);
       fd.set(`cantidad_${i}`, ing.cantidad);
+      fd.set(`unidad_${i}`, ing.unidad);
     });
     const res = await addProductoConReceta(fd);
     setLoading(false);
     if (res.success) {
       setStatus({ ok: true, msg: `Guardado. Costo total: $${res.costoProduccion} · Precio unitario: $${res.precioVenta}` });
       formRef.current?.reset();
-      setIngredientes([{ insumoId: insumos[0]?.id || '', cantidad: '' }]);
+      setIngredientes([{ insumoId: insumos[0]?.id || '', cantidad: '', unidad: insumos[0]?.unit || 'u' }]);
       setMargen(30);
       setRinde(1);
     } else {
@@ -115,24 +128,39 @@ export default function RecetaForm({ insumos }: { insumos: Insumo[] }) {
           </button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {ingredientes.map((ing, idx) => {
-            const ins = insumos.find(i => i.id === ing.insumoId);
-            return (
-              <div key={idx} className="ingredient-row" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <select value={ing.insumoId} onChange={e => updateIngrediente(idx, 'insumoId', e.target.value)}
-                  className="input" style={{ flex: 2 }}>
-                  {insumos.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-                </select>
-                <input type="number" step="0.01" placeholder={`(${ins?.unit || ''})`} value={ing.cantidad}
+          {ingredientes.map((ing, idx) => (
+            <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', padding: '0.5rem', borderRadius: '8px', background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <select value={ing.insumoId}
+                onChange={e => {
+                  const ins = insumos.find(i => i.id === e.target.value);
+                  setIngredientes(p => p.map((item, i) => i === idx ? { ...item, insumoId: e.target.value, unidad: ins?.unit || item.unidad } : item));
+                }}
+                className="input">
+                {insumos.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+              </select>
+              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                <input type="number" step="0.001" placeholder="Cantidad" value={ing.cantidad}
                   onChange={e => updateIngrediente(idx, 'cantidad', e.target.value)}
-                  className="input" style={{ flex: 1 }} />
+                  className="input" style={{ flex: 2 }} />
+                <select value={ing.unidad}
+                  onChange={e => updateIngrediente(idx, 'unidad', e.target.value)}
+                  className="input" style={{ flex: 1 }}>
+                  <option value="kg">kg</option>
+                  <option value="g">g</option>
+                  <option value="lt">lt</option>
+                  <option value="ml">ml</option>
+                  <option value="u">u</option>
+                  <option value="cdta">cdta</option>
+                  <option value="cda">cda</option>
+                  <option value="taza">taza</option>
+                </select>
                 {ingredientes.length > 1 && (
                   <button type="button" onClick={() => removeIngrediente(idx)}
                     style={{ color: 'var(--danger)', fontSize: '1.1rem', padding: '0.2rem', flexShrink: 0 }}>✕</button>
                 )}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </div>
 

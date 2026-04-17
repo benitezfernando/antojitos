@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { deleteProducto, updateProductoConReceta } from '@/app/actions';
 
 interface Insumo { id: string; name: string; unit: string; cost: number; }
-interface Ingrediente { insumoId: string; cantidad: string; }
+interface Ingrediente { insumoId: string; cantidad: string; unidad: string; }
 
 interface Props {
   id: string;
@@ -18,14 +18,27 @@ interface Props {
   rinde: number;
   cap: number | null;
   capColor: string;
-  recetaIngredientes: { insumoId: string; cantidad: number }[];
+  recetaIngredientes: { insumoId: string; cantidad: number; unidad: string }[];
   insumos: Insumo[];
+}
+
+function factorConversion(unidadInsumo: string, unidadReceta: string): number {
+  const u1 = unidadInsumo.toLowerCase().trim();
+  const u2 = unidadReceta.toLowerCase().trim();
+  if (u1 === u2) return 1;
+  if (u1 === 'kg' && u2 === 'g') return 0.001;
+  if (u1 === 'g' && u2 === 'kg') return 1000;
+  if (u1 === 'lt' && u2 === 'ml') return 0.001;
+  if (u1 === 'ml' && u2 === 'lt') return 1000;
+  return 1;
 }
 
 function calcularPreview(ingredientes: Ingrediente[], insumos: Insumo[], margen: number, rinde: number) {
   const costoTotal = ingredientes.reduce((acc, ing) => {
     const ins = insumos.find(i => i.id === ing.insumoId);
-    return acc + (ins?.cost ?? 0) * (parseFloat(ing.cantidad.replace(',', '.')) || 0);
+    if (!ins) return acc;
+    const factor = factorConversion(ins.unit, ing.unidad);
+    return acc + ins.cost * (parseFloat(ing.cantidad.replace(',', '.')) || 0) * factor;
   }, 0);
   const costoUnitario = rinde > 0 ? costoTotal / rinde : costoTotal;
   return { costoTotal, costoUnitario, precio: costoUnitario * (1 + margen / 100) };
@@ -40,16 +53,30 @@ export function ProductoAcciones({ id, name, categoria, margen, costo, precio, s
 
   const margenInicial = margen > 0 && margen <= 2 ? Math.round(margen * 100) : margen > 0 ? Math.round(margen) : 30;
   const [margenVal, setMargenVal] = useState(margenInicial);
-  const [rindeVal, setRindeVal] = useState(rinde > 0 ? rinde : 1);
+  const [rindeVal, setRindeVal] = useState(String(rinde > 0 ? rinde : 1));
   const [ingredientes, setIngredientes] = useState<Ingrediente[]>(
     recetaIngredientes.length > 0
-      ? recetaIngredientes.map(i => ({ insumoId: i.insumoId, cantidad: String(i.cantidad) }))
-      : [{ insumoId: insumos[0]?.id || '', cantidad: '' }]
+      ? recetaIngredientes.map(i => ({ insumoId: i.insumoId, cantidad: String(i.cantidad), unidad: i.unidad || insumos.find(ins => ins.id === i.insumoId)?.unit || 'u' }))
+      : [{ insumoId: insumos[0]?.id || '', cantidad: '', unidad: insumos[0]?.unit || '' }]
   );
 
-  const preview = calcularPreview(ingredientes, insumos, margenVal, rindeVal);
+  // Sincroniza estado con props frescas tras router.refresh()
+  useEffect(() => {
+    if (editing) return;
+    const m = margen > 0 && margen <= 2 ? Math.round(margen * 100) : margen > 0 ? Math.round(margen) : 30;
+    setMargenVal(m);
+    setRindeVal(String(rinde > 0 ? rinde : 1));
+    setIngredientes(
+      recetaIngredientes.length > 0
+        ? recetaIngredientes.map(i => ({ insumoId: i.insumoId, cantidad: String(i.cantidad), unidad: i.unidad || insumos.find(ins => ins.id === i.insumoId)?.unit || 'u' }))
+        : [{ insumoId: insumos[0]?.id || '', cantidad: '', unidad: insumos[0]?.unit || '' }]
+    );
+  }, [margen, rinde, recetaIngredientes, editing]);
 
-  const addIng = () => setIngredientes(p => [...p, { insumoId: insumos[0]?.id || '', cantidad: '' }]);
+  const rindeNum = parseFloat(rindeVal.replace(',', '.')) || 0;
+  const preview = calcularPreview(ingredientes, insumos, margenVal, rindeNum);
+
+  const addIng = () => setIngredientes(p => [...p, { insumoId: insumos[0]?.id || '', cantidad: '', unidad: insumos[0]?.unit || '' }]);
   const removeIng = (idx: number) => setIngredientes(p => p.filter((_, i) => i !== idx));
   const updateIng = (idx: number, field: keyof Ingrediente, val: string) =>
     setIngredientes(p => p.map((ing, i) => i === idx ? { ...ing, [field]: val } : ing));
@@ -62,13 +89,19 @@ export function ProductoAcciones({ id, name, categoria, margen, costo, precio, s
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (rindeNum < 1) {
+      setError('El rinde debe ser al menos 1 unidad.');
+      return;
+    }
     setLoading(true);
     setError(null);
     setStatus(null);
     const fd = new FormData(e.currentTarget);
+    fd.set('rinde', String(rindeNum));
     ingredientes.forEach((ing, i) => {
       fd.set(`insumoId_${i}`, ing.insumoId);
       fd.set(`cantidad_${i}`, ing.cantidad);
+      fd.set(`unidad_${i}`, ing.unidad);
     });
     const res = await updateProductoConReceta(fd);
     setLoading(false);
@@ -107,7 +140,10 @@ export function ProductoAcciones({ id, name, categoria, margen, costo, precio, s
 
             <div className="form-group" style={{ marginBottom: '0.75rem' }}>
               <label className="label">
-                Rinde: <strong style={{ color: 'var(--primary-dark)' }}>{rindeVal} unidades</strong>
+                Rinde:{' '}
+                <strong style={{ color: rindeNum < 1 ? 'var(--danger)' : 'var(--primary-dark)' }}>
+                  {rindeNum >= 1 ? `${rindeNum} unidades` : 'debe ser ≥ 1'}
+                </strong>
               </label>
               <input
                 className="input"
@@ -116,8 +152,7 @@ export function ProductoAcciones({ id, name, categoria, margen, costo, precio, s
                 min="1"
                 step="1"
                 value={rindeVal}
-                onChange={e => setRindeVal(Math.max(1, parseInt(e.target.value) || 1))}
-                required
+                onChange={e => setRindeVal(e.target.value)}
               />
             </div>
 
@@ -130,24 +165,39 @@ export function ProductoAcciones({ id, name, categoria, margen, costo, precio, s
                 </button>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                {ingredientes.map((ing, idx) => {
-                  const ins = insumos.find(i => i.id === ing.insumoId);
-                  return (
-                    <div key={idx} className="ingredient-row" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <select value={ing.insumoId} onChange={e => updateIng(idx, 'insumoId', e.target.value)}
-                        className="input" style={{ flex: 2 }}>
-                        {insumos.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-                      </select>
-                      <input type="number" step="0.01" placeholder={`(${ins?.unit || ''})`} value={ing.cantidad}
+                {ingredientes.map((ing, idx) => (
+                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', padding: '0.5rem', borderRadius: '8px', background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                    <select value={ing.insumoId}
+                      onChange={e => {
+                        const ins = insumos.find(i => i.id === e.target.value);
+                        setIngredientes(p => p.map((item, i) => i === idx ? { ...item, insumoId: e.target.value, unidad: ins?.unit || item.unidad } : item));
+                      }}
+                      className="input">
+                      {insumos.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                    </select>
+                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                      <input type="number" step="0.001" placeholder="Cantidad" value={ing.cantidad}
                         onChange={e => updateIng(idx, 'cantidad', e.target.value)}
-                        className="input" style={{ flex: 1 }} />
+                        className="input" style={{ flex: 2 }} />
+                      <select value={ing.unidad}
+                        onChange={e => updateIng(idx, 'unidad', e.target.value)}
+                        className="input" style={{ flex: 1 }}>
+                        <option value="kg">kg</option>
+                        <option value="g">g</option>
+                        <option value="lt">lt</option>
+                        <option value="ml">ml</option>
+                        <option value="u">u</option>
+                        <option value="cdta">cdta</option>
+                        <option value="cda">cda</option>
+                        <option value="taza">taza</option>
+                      </select>
                       {ingredientes.length > 1 && (
                         <button type="button" onClick={() => removeIng(idx)}
                           style={{ color: 'var(--danger)', fontSize: '1.1rem', flexShrink: 0, padding: '0.2rem' }}>✕</button>
                       )}
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             </div>
 

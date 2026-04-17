@@ -47,6 +47,7 @@ export default async function RecetasPage() {
         prodId: r.get('ID_Producto'),
         insumoId: r.get('ID_Insumo'),
         cantidad: parseFloat(String(r.get('Cantidad_Necesaria') ?? '0').replace(',', '.')) || 0,
+        unidad: r.get('Unidad') || '',
       }));
     }
   } catch {
@@ -135,7 +136,7 @@ export default async function RecetasPage() {
                         rinde={prod.rinde}
                         cap={cap}
                         capColor={capColor}
-                        recetaIngredientes={recetas.filter(r => r.prodId === prod.id).map(r => ({ insumoId: r.insumoId, cantidad: r.cantidad }))}
+                        recetaIngredientes={recetas.filter(r => r.prodId === prod.id).map(r => ({ insumoId: r.insumoId, cantidad: r.cantidad, unidad: r.unidad }))}
                         insumos={insumos}
                       />
                     );
@@ -198,7 +199,7 @@ export default async function RecetasPage() {
                           borderBottom: i < ings.length - 1 ? '1px solid var(--border)' : 'none',
                         }}>
                           <span style={{ color: 'var(--text-muted)' }}>{ins?.name || ing.insumoId}</span>
-                          <span style={{ fontWeight: 700 }}>{qty} {ins?.unit}</span>
+                          <span style={{ fontWeight: 700 }}>{qty} {ing.unidad || ins?.unit}</span>
                         </li>
                       );
                     })}

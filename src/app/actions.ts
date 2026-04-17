@@ -10,6 +10,23 @@ function uniqueId(prefix: string): string {
   return `${prefix}-${ts}${rand}`;
 }
 
+// --- Conversión de unidades: normaliza `cantidad` en `unidadReceta` a la unidad base del insumo ---
+// Ej: insumo en kg, receta en g → factor = 0.001 → 200g × 0.001 = 0.2 kg
+function factorConversion(unidadInsumo: string, unidadReceta: string): number {
+  const u1 = unidadInsumo.toLowerCase().trim();
+  const u2 = unidadReceta.toLowerCase().trim();
+  if (u1 === u2) return 1;
+  // masa
+  if (u1 === 'kg' && u2 === 'g') return 0.001;
+  if (u1 === 'g' && u2 === 'kg') return 1000;
+  // volumen
+  if (u1 === 'lt' && u2 === 'ml') return 0.001;
+  if (u1 === 'ml' && u2 === 'lt') return 1000;
+  if (u1 === 'lt' && u2 === 'l') return 1;
+  // sin conversión conocida → asumir 1:1
+  return 1;
+}
+
 // --- Helpers de validación ---
 function requireString(value: FormDataEntryValue | null, field: string): string {
   const str = (value as string ?? '').trim();
@@ -74,7 +91,7 @@ export async function addProductoConReceta(formData: FormData) {
 
     // Get all insumos to calculate cost
     const insumosRows = await insumosSheet.getRows();
-    const insumosMap = new Map(insumosRows.map(r => [r.get('ID'), parseFloat(r.get('Costo_Unitario')) || 0]));
+    const insumosMap = new Map(insumosRows.map(r => [r.get('ID'), { costo: parseFloat(r.get('Costo_Unitario')) || 0, unidad: r.get('Unidad_Medida') || 'u' }]));
 
     const nombre = requireString(formData.get('nombre'), 'Nombre del producto');
     const categoria = requireString(formData.get('categoria'), 'Categoría');
@@ -84,13 +101,14 @@ export async function addProductoConReceta(formData: FormData) {
     if (rindeReceta === 0) throw new Error('El rinde debe ser mayor a 0.');
 
     // Parse recipe ingredients from formData (insumoId_0, cantidad_0, ...)
-    const ingredientes: { id: string; qty: number }[] = [];
+    const ingredientes: { id: string; qty: number; unidad: string }[] = [];
     let i = 0;
     while (formData.get(`insumoId_${i}`)) {
       const insumoId = requireString(formData.get(`insumoId_${i}`), `ID insumo ${i}`);
       const qty = requirePositiveNumber(formData.get(`cantidad_${i}`), `Cantidad insumo ${i}`);
       if (qty === 0) throw new Error(`La cantidad del insumo ${i + 1} debe ser mayor a 0.`);
-      ingredientes.push({ id: insumoId, qty });
+      const unidad = String(formData.get(`unidad_${i}`) ?? '').trim() || 'u';
+      ingredientes.push({ id: insumoId, qty, unidad });
       i++;
     }
 
@@ -98,8 +116,10 @@ export async function addProductoConReceta(formData: FormData) {
 
     // Costo total de la receta dividido por rinde = costo por unidad
     const costoTotalReceta = ingredientes.reduce((acc, ing) => {
-      const costoPorUnidad = insumosMap.get(ing.id) || 0;
-      return acc + costoPorUnidad * ing.qty;
+      const insumo = insumosMap.get(ing.id);
+      if (!insumo) return acc;
+      const factor = factorConversion(insumo.unidad, ing.unidad);
+      return acc + insumo.costo * ing.qty * factor;
     }, 0);
     const costoProduccion = costoTotalReceta / rindeReceta;
 
@@ -125,6 +145,7 @@ export async function addProductoConReceta(formData: FormData) {
         ID_Producto: nextProdId,
         ID_Insumo: ing.id,
         Cantidad_Necesaria: ing.qty,
+        Unidad: ing.unidad,
       });
     }
 
@@ -336,21 +357,27 @@ export async function updateProductoConReceta(formData: FormData) {
     if (rindeReceta === 0) throw new Error('El rinde debe ser mayor a 0.');
 
     // Parsear ingredientes
-    const ingredientes: { id: string; qty: number }[] = [];
+    const ingredientes: { id: string; qty: number; unidad: string }[] = [];
     let i = 0;
     while (formData.get(`insumoId_${i}`)) {
       const insumoId = requireString(formData.get(`insumoId_${i}`), `ID insumo ${i}`);
       const qty = requirePositiveNumber(formData.get(`cantidad_${i}`), `Cantidad insumo ${i}`);
       if (qty === 0) throw new Error(`La cantidad del insumo ${i + 1} debe ser mayor a 0.`);
-      ingredientes.push({ id: insumoId, qty });
+      const unidad = String(formData.get(`unidad_${i}`) ?? '').trim() || 'u';
+      ingredientes.push({ id: insumoId, qty, unidad });
       i++;
     }
     if (ingredientes.length === 0) throw new Error('La receta debe tener al menos un ingrediente.');
 
     // Recalcular costo por unidad (costo total receta / rinde)
     const insumosRows = await insumosSheet.getRows();
-    const insumosMap = new Map(insumosRows.map(r => [r.get('ID'), parseFloat(r.get('Costo_Unitario')) || 0]));
-    const costoTotalReceta = ingredientes.reduce((acc, ing) => acc + (insumosMap.get(ing.id) || 0) * ing.qty, 0);
+    const insumosMap = new Map(insumosRows.map(r => [r.get('ID'), { costo: parseFloat(r.get('Costo_Unitario')) || 0, unidad: r.get('Unidad_Medida') || 'u' }]));
+    const costoTotalReceta = ingredientes.reduce((acc, ing) => {
+      const insumo = insumosMap.get(ing.id);
+      if (!insumo) return acc;
+      const factor = factorConversion(insumo.unidad, ing.unidad);
+      return acc + insumo.costo * ing.qty * factor;
+    }, 0);
     const costoProduccion = costoTotalReceta / rindeReceta;
     const precioVentaSugerido = costoProduccion * (1 + margenPct / 100);
 
@@ -372,7 +399,7 @@ export async function updateProductoConReceta(formData: FormData) {
       await r.delete();
     }
     for (const ing of ingredientes) {
-      await recetasSheet.addRow({ ID_Producto: prodId, ID_Insumo: ing.id, Cantidad_Necesaria: ing.qty });
+      await recetasSheet.addRow({ ID_Producto: prodId, ID_Insumo: ing.id, Cantidad_Necesaria: ing.qty, Unidad: ing.unidad });
     }
 
     revalidatePath('/recetas');
