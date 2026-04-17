@@ -388,8 +388,10 @@ export async function updateProductoConReceta(formData: FormData) {
       const insumo = insumosMap.get(ing.id);
       if (!insumo) return acc;
       const factor = factorConversion(insumo.unidad, ing.unidad);
+      console.log(`[DEBUG] insumo=${ing.id} costo=${insumo.costo} unidadInsumo=${insumo.unidad} unidadReceta=${ing.unidad} qty=${ing.qty} factor=${factor} subtotal=${insumo.costo * ing.qty * factor}`);
       return acc + insumo.costo * ing.qty * factor;
     }, 0);
+    console.log(`[DEBUG] costoTotalReceta=${costoTotalReceta} rinde=${rindeReceta} margen=${margenPct}`);
     const costoProduccion = costoTotalReceta / rindeReceta;
     const precioVentaSugerido = costoProduccion * (1 + margenPct / 100);
 
