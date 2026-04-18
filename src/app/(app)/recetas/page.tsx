@@ -4,6 +4,32 @@ import { ProductoAcciones } from "./ProductoActions";
 
 export const dynamic = 'force-dynamic';
 
+function factorConversion(unidadInsumo: string, unidadReceta: string): number {
+  const u1 = (unidadInsumo || '').toLowerCase().trim();
+  const u2 = (unidadReceta || '').toLowerCase().trim();
+  if (u1 === u2) return 1;
+  if (u1 === 'kg' && u2 === 'g') return 0.001;
+  if (u1 === 'g' && u2 === 'kg') return 1000;
+  if (u1 === 'lt' && u2 === 'ml') return 0.001;
+  if (u1 === 'ml' && u2 === 'lt') return 1000;
+  return 1;
+}
+
+function parseLocalNumber(val: any): number {
+  if (val === null || val === undefined) return 0;
+  let str = String(val).trim();
+  if (!str) return 0;
+  if (str.includes('.') && str.includes(',')) {
+    const lastDot = str.lastIndexOf('.');
+    const lastComma = str.lastIndexOf(',');
+    if (lastComma > lastDot) str = str.replace(/\./g, '').replace(',', '.');
+    else str = str.replace(/,/g, '');
+  } else if (str.includes(',')) {
+    str = str.replace(',', '.');
+  }
+  return parseFloat(str) || 0;
+}
+
 export default async function RecetasPage() {
   let insumos: any[] = [];
   let productos: any[] = [];
@@ -20,8 +46,8 @@ export default async function RecetasPage() {
         id: r.get('ID'),
         name: r.get('Nombre'),
         unit: r.get('Unidad_Medida'),
-        cost: parseFloat(r.get('Costo_Unitario')) || 0,
-        stock: parseFloat(r.get('Stock_Actual')) || 0,
+        cost: parseLocalNumber(r.get('Costo_Unitario')),
+        stock: parseLocalNumber(r.get('Stock_Actual')),
       }));
     }
 
@@ -32,11 +58,11 @@ export default async function RecetasPage() {
         id: r.get('ID'),
         name: r.get('Nombre'),
         categoria: r.get('Categoria'),
-        costo: parseFloat(r.get('Costo_Produccion')) || 0,
-        margen: parseFloat(r.get('Margen_Ganancia')) || 0,
-        precio: parseFloat(r.get('Precio_Venta_Sugerido')) || 0,
-        stock: parseFloat(r.get('Stock_Actual')) || 0,
-        rinde: parseFloat(String(r.get('Rinde_Receta') ?? '1').replace(',', '.')) || 1,
+        costo: parseLocalNumber(r.get('Costo_Produccion')),
+        margen: parseLocalNumber(r.get('Margen_Ganancia')),
+        precio: parseLocalNumber(r.get('Precio_Venta_Sugerido')),
+        stock: parseLocalNumber(r.get('Stock_Actual')),
+        rinde: parseLocalNumber(r.get('Rinde_Receta')) || 1,
       }));
     }
 
@@ -46,7 +72,7 @@ export default async function RecetasPage() {
       recetas = rows.map(r => ({
         prodId: r.get('ID_Producto'),
         insumoId: r.get('ID_Insumo'),
-        cantidad: parseFloat(String(r.get('Cantidad_Necesaria') ?? '0').replace(',', '.')) || 0,
+        cantidad: parseLocalNumber(r.get('Cantidad_Necesaria')),
         unidad: r.get('Unidad') || '',
       }));
     }
@@ -78,7 +104,9 @@ export default async function RecetasPage() {
       Math.min(...ings.map(ing => {
         const ins = insumosMap.get(ing.insumoId);
         if (!ins || ing.cantidad === 0) return 0;
-        return (ins.stock * rinde) / ing.cantidad;
+        const qtyInBaseUnit = ing.cantidad * factorConversion(ins.unit, ing.unidad);
+        if (qtyInBaseUnit === 0) return 0;
+        return (ins.stock * rinde) / qtyInBaseUnit;
       }))
     );
     return { ...prod, capacidad };

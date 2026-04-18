@@ -23,8 +23,8 @@ interface Props {
 }
 
 function factorConversion(unidadInsumo: string, unidadReceta: string): number {
-  const u1 = unidadInsumo.toLowerCase().trim();
-  const u2 = unidadReceta.toLowerCase().trim();
+  const u1 = (unidadInsumo || '').toLowerCase().trim();
+  const u2 = (unidadReceta || '').toLowerCase().trim();
   if (u1 === u2) return 1;
   if (u1 === 'kg' && u2 === 'g') return 0.001;
   if (u1 === 'g' && u2 === 'kg') return 1000;
@@ -33,12 +33,31 @@ function factorConversion(unidadInsumo: string, unidadReceta: string): number {
   return 1;
 }
 
+function parseLocalNumber(val: any): number {
+  if (val === null || val === undefined) return 0;
+  let str = String(val).trim();
+  if (!str) return 0;
+  // Handle 1.500,50 format (Argentina) vs 1,500.50 (US)
+  if (str.includes('.') && str.includes(',')) {
+    const lastDot = str.lastIndexOf('.');
+    const lastComma = str.lastIndexOf(',');
+    if (lastComma > lastDot) {
+      str = str.replace(/\./g, '').replace(',', '.'); // 1.500,50 -> 1500.50
+    } else {
+      str = str.replace(/,/g, ''); // 1,500.50 -> 1500.50
+    }
+  } else if (str.includes(',')) {
+    str = str.replace(',', '.'); // 1500,50 -> 1500.50
+  }
+  return parseFloat(str) || 0;
+}
+
 function calcularPreview(ingredientes: Ingrediente[], insumos: Insumo[], margen: number, rinde: number) {
   const costoTotal = ingredientes.reduce((acc, ing) => {
     const ins = insumos.find(i => i.id === ing.insumoId);
     if (!ins) return acc;
     const factor = factorConversion(ins.unit, ing.unidad);
-    return acc + ins.cost * (parseFloat(ing.cantidad.replace(',', '.')) || 0) * factor;
+    return acc + ins.cost * parseLocalNumber(ing.cantidad) * factor;
   }, 0);
   const costoUnitario = rinde > 0 ? costoTotal / rinde : costoTotal;
   return { costoTotal, costoUnitario, precio: costoUnitario * (1 + margen / 100) };
@@ -71,7 +90,7 @@ function ProductoAccionesInner({ id, name, categoria, margen, costo, precio, sto
       : [{ insumoId: insumos[0]?.id || '', cantidad: '', unidad: insumos[0]?.unit || '' }]
   );
 
-  const rindeNum = parseFloat(rindeVal.replace(',', '.')) || 0;
+  const rindeNum = parseLocalNumber(rindeVal);
   const preview = calcularPreview(ingredientes, insumos, margenVal, rindeNum);
 
   const addIng = () => setIngredientes(p => [...p, { insumoId: insumos[0]?.id || '', cantidad: '', unidad: insumos[0]?.unit || '' }]);

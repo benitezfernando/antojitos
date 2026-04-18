@@ -10,6 +10,21 @@ function uniqueId(prefix: string): string {
   return `${prefix}-${ts}${rand}`;
 }
 
+function parseLocalNumber(val: any): number {
+  if (val === null || val === undefined) return 0;
+  let str = String(val).trim();
+  if (!str) return 0;
+  if (str.includes('.') && str.includes(',')) {
+    const lastDot = str.lastIndexOf('.');
+    const lastComma = str.lastIndexOf(',');
+    if (lastComma > lastDot) str = str.replace(/\./g, '').replace(',', '.');
+    else str = str.replace(/,/g, '');
+  } else if (str.includes(',')) {
+    str = str.replace(',', '.');
+  }
+  return parseFloat(str) || 0;
+}
+
 // --- Conversión de unidades: normaliza `cantidad` en `unidadReceta` a la unidad base del insumo ---
 // Ej: insumo en kg, receta en g → factor = 0.001 → 200g × 0.001 = 0.2 kg
 function factorConversion(unidadInsumo: string, unidadReceta: string): number {
@@ -35,8 +50,7 @@ function requireString(value: FormDataEntryValue | null, field: string): string 
 }
 
 function requirePositiveNumber(value: FormDataEntryValue | null, field: string): number {
-  const str = String(value ?? '').replace(',', '.');
-  const num = parseFloat(str);
+  const num = parseLocalNumber(value);
   if (isNaN(num) || num < 0) throw new Error(`El campo "${field}" debe ser un número válido mayor o igual a 0.`);
   return num;
 }
@@ -91,7 +105,7 @@ export async function addProductoConReceta(formData: FormData) {
 
     // Get all insumos to calculate cost
     const insumosRows = await insumosSheet.getRows();
-    const insumosMap = new Map(insumosRows.map(r => [r.get('ID'), { costo: parseFloat(r.get('Costo_Unitario')) || 0, unidad: r.get('Unidad_Medida') || 'u' }]));
+    const insumosMap = new Map(insumosRows.map(r => [r.get('ID'), { costo: parseLocalNumber(r.get('Costo_Unitario')), unidad: r.get('Unidad_Medida') || 'u' }]));
 
     const nombre = requireString(formData.get('nombre'), 'Nombre del producto');
     const categoria = requireString(formData.get('categoria'), 'Categoría');
@@ -240,7 +254,7 @@ export async function registrarProduccion(formData: FormData) {
     const prodRow = prodRows.find(r => r.get('ID') === productoId);
     if (!prodRow) throw new Error('Producto no encontrado.');
     const nombreProducto = prodRow.get('Nombre');
-    const rindeReceta = parseFloat(String(prodRow.get('Rinde_Receta') ?? '1').replace(',', '.')) || 1;
+    const rindeReceta = parseLocalNumber(prodRow.get('Rinde_Receta')) || 1;
 
     // Obtener receta del producto
     const recetaRows = await recetasSheet.getRows();
@@ -251,14 +265,14 @@ export async function registrarProduccion(formData: FormData) {
     const insumosRows = await insumosSheet.getRows();
     for (const ing of ingredientes) {
       const insumoId = ing.get('ID_Insumo');
-      const cantNecesaria = parseFloat(String(ing.get('Cantidad_Necesaria') ?? '0').replace(',', '.')) || 0;
+      const cantNecesaria = parseLocalNumber(ing.get('Cantidad_Necesaria'));
       // Si la receta rinde 100 y se producen 6: usar (6/100) * cantNecesaria
       const totalNecesario = (cantidad / rindeReceta) * cantNecesaria;
 
       const insumoRow = insumosRows.find(r => r.get('ID') === insumoId);
       if (!insumoRow) throw new Error(`Insumo ${insumoId} no encontrado.`);
 
-      const stockActual = parseFloat(insumoRow.get('Stock_Actual')) || 0;
+      const stockActual = parseLocalNumber(insumoRow.get('Stock_Actual'));
       if (stockActual < totalNecesario) {
         throw new Error(`Stock insuficiente de "${insumoRow.get('Nombre')}": necesitás ${totalNecesario}, tenés ${stockActual}.`);
       }
@@ -267,7 +281,7 @@ export async function registrarProduccion(formData: FormData) {
     }
 
     // Sumar al stock del producto
-    const stockProdActual = parseFloat(prodRow.get('Stock_Actual')) || 0;
+    const stockProdActual = parseLocalNumber(prodRow.get('Stock_Actual'));
     prodRow.set('Stock_Actual', String(stockProdActual + cantidad));
     await prodRow.save();
 
@@ -314,8 +328,8 @@ export async function registrarVenta(formData: FormData) {
     if (!prodRow) throw new Error('Producto no encontrado.');
 
     const nombreProducto = prodRow.get('Nombre');
-    const precioUnitario = parseFloat(prodRow.get('Precio_Venta_Sugerido')) || 0;
-    const stockActual = parseFloat(prodRow.get('Stock_Actual')) || 0;
+    const precioUnitario = parseLocalNumber(prodRow.get('Precio_Venta_Sugerido'));
+    const stockActual = parseLocalNumber(prodRow.get('Stock_Actual'));
 
     if (precioUnitario <= 0) {
       throw new Error(`"${nombreProducto}" no tiene precio de venta definido. Editá el producto antes de registrar una venta.`);
@@ -383,7 +397,7 @@ export async function updateProductoConReceta(formData: FormData) {
 
     // Recalcular costo por unidad (costo total receta / rinde)
     const insumosRows = await insumosSheet.getRows();
-    const insumosMap = new Map(insumosRows.map(r => [r.get('ID'), { costo: parseFloat(r.get('Costo_Unitario')) || 0, unidad: r.get('Unidad_Medida') || 'u' }]));
+    const insumosMap = new Map(insumosRows.map(r => [r.get('ID'), { costo: parseLocalNumber(r.get('Costo_Unitario')), unidad: r.get('Unidad_Medida') || 'u' }]));
     const costoTotalReceta = ingredientes.reduce((acc, ing) => {
       const insumo = insumosMap.get(ing.id);
       if (!insumo) return acc;
