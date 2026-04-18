@@ -44,6 +44,18 @@ function parseLocalNumber(val: any): number {
   return parseFloat(str) || 0;
 }
 
+// Devuelve { unidadBase, factor } para normalizar precio a precio/unidadBase
+// g → kg (×0.001), ml → lt (×0.001), kg/lt/u → sin cambio
+function normalizarUnidad(unidad: string): { unidadBase: string; factorPrecio: number } {
+  switch (unidad.toLowerCase().trim()) {
+    case 'g':  return { unidadBase: 'kg', factorPrecio: 1000 };
+    case 'ml': return { unidadBase: 'lt', factorPrecio: 1000 };
+    case 'kg': return { unidadBase: 'kg', factorPrecio: 1 };
+    case 'lt': return { unidadBase: 'lt', factorPrecio: 1 };
+    default:   return { unidadBase: unidad, factorPrecio: 1 };
+  }
+}
+
 // --- Conversión de unidades: normaliza `cantidad` en `unidadReceta` a la unidad base del insumo ---
 // Ej: insumo en kg, receta en g → factor = 0.001 → 200g × 0.001 = 0.2 kg
 function factorConversion(unidadInsumo: string, unidadReceta: string): number {
@@ -83,12 +95,15 @@ function requirePercentage(value: FormDataEntryValue | null, field: string): num
 export async function addInsumo(formData: FormData): Promise<{ success: boolean; error?: string }> {
   try {
     const nombre = requireString(formData.get('nombre'), 'Nombre');
-    const unidad = requireString(formData.get('unidad'), 'Unidad de medida');
+    const unidadPaquete = requireString(formData.get('unidad'), 'Unidad de medida');
     const costo = requirePositiveNumber(formData.get('costo'), 'Costo unitario');
     const stock = requirePositiveNumber(formData.get('stock'), 'Stock actual');
     const minStock = requirePositiveNumber(formData.get('minStock'), 'Stock mínimo');
     const costoPaquete = parseFloat(String(formData.get('costoPaquete') ?? '0')) || 0;
     const cantPaquete = parseFloat(String(formData.get('cantPaquete') ?? '0')) || 0;
+
+    // Normalizar: Unidad_Medida siempre en unidad base (kg/lt/u), Costo_Unitario en precio/unidadBase
+    const { unidadBase } = normalizarUnidad(unidadPaquete);
 
     const { doc } = await getGoogleSheet();
     const sheet = doc.sheetsByTitle['Insumos'];
@@ -105,7 +120,7 @@ export async function addInsumo(formData: FormData): Promise<{ success: boolean;
     await sheet.addRow({
       ID: uniqueId('INS'),
       Nombre: nombre,
-      Unidad_Medida: unidad,
+      Unidad_Medida: unidadBase,
       Costo_Unitario: costo,
       Costo_Paquete: costoPaquete,
       Cant_Paquete: cantPaquete,
@@ -235,12 +250,14 @@ export async function updateInsumo(formData: FormData) {
   try {
     const id = requireString(formData.get('id'), 'ID');
     const nombre = requireString(formData.get('nombre'), 'Nombre');
-    const unidad = requireString(formData.get('unidad'), 'Unidad de medida');
+    const unidadPaquete = requireString(formData.get('unidad'), 'Unidad de medida');
     const costo = requirePositiveNumber(formData.get('costo'), 'Costo unitario');
     const stock = requirePositiveNumber(formData.get('stock'), 'Stock actual');
     const minStock = requirePositiveNumber(formData.get('minStock'), 'Stock mínimo');
     const costoPaquete = parseFloat(String(formData.get('costoPaquete') ?? '0')) || 0;
     const cantPaquete = parseFloat(String(formData.get('cantPaquete') ?? '0')) || 0;
+
+    const { unidadBase } = normalizarUnidad(unidadPaquete);
 
     const { doc } = await getGoogleSheet();
     const sheet = doc.sheetsByTitle['Insumos'];
@@ -258,7 +275,7 @@ export async function updateInsumo(formData: FormData) {
     const row = rows.find(r => r.get('ID') === id);
     if (!row) throw new Error("Insumo no encontrado");
     row.set('Nombre', nombre);
-    row.set('Unidad_Medida', unidad);
+    row.set('Unidad_Medida', unidadBase);
     row.set('Costo_Unitario', costo);
     row.set('Costo_Paquete', costoPaquete);
     row.set('Cant_Paquete', cantPaquete);
