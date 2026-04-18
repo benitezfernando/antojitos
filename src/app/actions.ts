@@ -11,17 +11,36 @@ function uniqueId(prefix: string): string {
 }
 
 function parseLocalNumber(val: any): number {
-  if (val === null || val === undefined) return 0;
+  if (val === null || val === undefined || val === '') return 0;
+  if (typeof val === 'number') return val;
   let str = String(val).trim();
-  if (!str) return 0;
-  if (str.includes('.') && str.includes(',')) {
-    const lastDot = str.lastIndexOf('.');
-    const lastComma = str.lastIndexOf(',');
-    if (lastComma > lastDot) str = str.replace(/\./g, '').replace(',', '.');
-    else str = str.replace(/,/g, '');
-  } else if (str.includes(',')) {
-    str = str.replace(',', '.');
+  
+  // If we have a comma, it's either an AR decimal (5770,50) or US thousand (5,770.50)
+  if (str.includes(',')) {
+    if (str.includes('.')) {
+      // Both exist: e.g. 5.770,50 (AR) or 5,770.50 (US)
+      const lastDot = str.lastIndexOf('.');
+      const lastComma = str.lastIndexOf(',');
+      if (lastComma > lastDot) str = str.replace(/\./g, '').replace(',', '.'); // AR format -> US standard
+      else str = str.replace(/,/g, ''); // US format -> US standard
+    } else {
+      // Only comma: e.g. 5770,50
+      str = str.replace(',', '.');
+    }
+  } else if (str.includes('.')) {
+    // Only dot. Could be 5770.50 (US decimal) OR 5.770 (AR thousand separator)
+    // If there's more than one dot, they are definitely thousand separators
+    if ((str.match(/\./g) || []).length > 1) {
+      str = str.replace(/\./g, '');
+    } else {
+      // Exactly one dot. If it's exactly 3 digits after the dot (e.g. 5.770) and no decimal places... 
+      // It's ambiguous. But `<input type="number">` uses dot for decimals. 
+      // We will leave it as is (so parseFloat treats it as a decimal).
+      // If users type 1500 as 1.500 in Sheets, it will parse as 1.5. 
+      // To fix this, we will write native numbers to Sheets so Sheets doesn't give us weird strings!
+    }
   }
+  
   return parseFloat(str) || 0;
 }
 
@@ -77,9 +96,9 @@ export async function addInsumo(formData: FormData): Promise<{ success: boolean;
       ID: uniqueId('INS'),
       Nombre: nombre,
       Unidad_Medida: unidad,
-      Costo_Unitario: String(costo),
-      Stock_Actual: String(stock),
-      Stock_Minimo: String(minStock),
+      Costo_Unitario: costo,
+      Stock_Actual: stock,
+      Stock_Minimo: minStock,
     });
 
     revalidatePath('/insumos');
@@ -158,11 +177,11 @@ export async function addProductoConReceta(formData: FormData) {
       ID: nextProdId,
       Nombre: nombre,
       Categoria: categoria,
-      Costo_Produccion: costoProduccion.toFixed(2),
-      Margen_Ganancia: String(margen),
-      Precio_Venta_Sugerido: precioVentaSugerido.toFixed(2),
-      Stock_Actual: String(stockProducto),
-      Rinde_Receta: String(rindeReceta),
+      Costo_Produccion: costoProduccion,
+      Margen_Ganancia: margen,
+      Precio_Venta_Sugerido: precioVentaSugerido,
+      Stock_Actual: stockProducto,
+      Rinde_Receta: rindeReceta,
     });
 
     // Create recipe rows
@@ -217,9 +236,9 @@ export async function updateInsumo(formData: FormData) {
     if (!row) throw new Error("Insumo no encontrado");
     row.set('Nombre', nombre);
     row.set('Unidad_Medida', unidad);
-    row.set('Costo_Unitario', String(costo));
-    row.set('Stock_Actual', String(stock));
-    row.set('Stock_Minimo', String(minStock));
+    row.set('Costo_Unitario', costo);
+    row.set('Stock_Actual', stock);
+    row.set('Stock_Minimo', minStock);
     await row.save();
     revalidatePath('/insumos');
     revalidatePath('/');
@@ -276,13 +295,13 @@ export async function registrarProduccion(formData: FormData) {
       if (stockActual < totalNecesario) {
         throw new Error(`Stock insuficiente de "${insumoRow.get('Nombre')}": necesitás ${totalNecesario}, tenés ${stockActual}.`);
       }
-      insumoRow.set('Stock_Actual', String(+(stockActual - totalNecesario).toFixed(4)));
+      insumoRow.set('Stock_Actual', stockActual - totalNecesario);
       await insumoRow.save();
     }
 
     // Sumar al stock del producto
     const stockProdActual = parseLocalNumber(prodRow.get('Stock_Actual'));
-    prodRow.set('Stock_Actual', String(stockProdActual + cantidad));
+    prodRow.set('Stock_Actual', stockProdActual + cantidad); // native number
     await prodRow.save();
 
     // Registrar en hoja Produccion
@@ -290,7 +309,7 @@ export async function registrarProduccion(formData: FormData) {
       ID: uniqueId('PROD-REG'),
       ID_Producto: productoId,
       Nombre_Producto: nombreProducto,
-      Cantidad: String(cantidad),
+      Cantidad: cantidad,
       Fecha: new Date().toISOString(),
     });
 
@@ -339,7 +358,7 @@ export async function registrarVenta(formData: FormData) {
     }
 
     // Descontar del stock del producto
-    prodRow.set('Stock_Actual', String(stockActual - cantidad));
+    prodRow.set('Stock_Actual', stockActual - cantidad);
     await prodRow.save();
 
     // Registrar en hoja Ventas
@@ -348,9 +367,9 @@ export async function registrarVenta(formData: FormData) {
       ID: uniqueId('VTA'),
       ID_Producto: productoId,
       Nombre_Producto: nombreProducto,
-      Cantidad: String(cantidad),
-      Precio_Unitario: precioUnitario.toFixed(2),
-      Total: total.toFixed(2),
+      Cantidad: cantidad,
+      Precio_Unitario: precioUnitario,
+      Total: total,
       Fecha: new Date().toISOString(),
     });
 
@@ -402,10 +421,8 @@ export async function updateProductoConReceta(formData: FormData) {
       const insumo = insumosMap.get(ing.id);
       if (!insumo) return acc;
       const factor = factorConversion(insumo.unidad, ing.unidad);
-      console.log(`[DEBUG] insumo=${ing.id} costo=${insumo.costo} unidadInsumo=${insumo.unidad} unidadReceta=${ing.unidad} qty=${ing.qty} factor=${factor} subtotal=${insumo.costo * ing.qty * factor}`);
       return acc + insumo.costo * ing.qty * factor;
     }, 0);
-    console.log(`[DEBUG] costoTotalReceta=${costoTotalReceta} rinde=${rindeReceta} margen=${margenPct}`);
     const costoProduccion = costoTotalReceta / rindeReceta;
     const precioVentaSugerido = costoProduccion * (1 + margenPct / 100);
 
@@ -419,14 +436,15 @@ export async function updateProductoConReceta(formData: FormData) {
     // Actualizar producto
     const prodRows = await productosSheet.getRows();
     const prodRow = prodRows.find(r => r.get('ID') === prodId);
-    if (!prodRow) throw new Error('Producto no encontrado.');
-    prodRow.set('Nombre', nombre);
-    prodRow.set('Categoria', categoria);
-    prodRow.set('Costo_Produccion', costoProduccion.toFixed(2));
-    prodRow.set('Margen_Ganancia', String(margenPct / 100));
-    prodRow.set('Precio_Venta_Sugerido', precioVentaSugerido.toFixed(2));
-    prodRow.set('Rinde_Receta', String(rindeReceta));
-    await prodRow.save();
+    if (prodRow) {
+      prodRow.set('Nombre', nombre);
+      prodRow.set('Categoria', categoria);
+      prodRow.set('Costo_Produccion', costoProduccion);
+      prodRow.set('Margen_Ganancia', margenPct / 100);
+      prodRow.set('Precio_Venta_Sugerido', precioVentaSugerido);
+      prodRow.set('Rinde_Receta', rindeReceta);
+      await prodRow.save();
+    }
 
     // Asegurar columna Unidad en Recetas
     await recetasSheet.loadHeaderRow();
