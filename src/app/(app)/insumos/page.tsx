@@ -20,6 +20,8 @@ export default async function InsumosPage() {
           name: r.get('Nombre'),
           unit: r.get('Unidad_Medida'),
           cost: parseFloat(r.get('Costo_Unitario')) || 0,
+          costoPaquete: parseFloat(r.get('Costo_Paquete')) || 0,
+          cantPaquete: parseFloat(r.get('Cant_Paquete')) || 0,
           stock: parseFloat(r.get('Stock_Actual')) || 0,
           minStock: parseFloat(r.get('Stock_Minimo')) || 0,
         }))
@@ -58,7 +60,7 @@ export default async function InsumosPage() {
                   <th className="hide-mobile">ID</th>
                   <th>Nombre</th>
                   <th>Unidad</th>
-                  <th className="hide-mobile">Costo ud.</th>
+                  <th className="hide-mobile">Costo/kg (recetas)</th>
                   <th>Stock</th>
                   <th>Acciones</th>
                 </tr>

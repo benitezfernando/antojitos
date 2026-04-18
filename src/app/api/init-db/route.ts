@@ -13,7 +13,7 @@ export async function GET() {
       await firstSheet.updateProperties({ title: 'Insumos' });
     }
     const insumosSheet = doc.sheetsByTitle['Insumos'] || firstSheet;
-    await insumosSheet.setHeaderRow(['ID', 'Nombre', 'Unidad_Medida', 'Costo_Unitario', 'Stock_Actual', 'Stock_Minimo']);
+    await insumosSheet.setHeaderRow(['ID', 'Nombre', 'Unidad_Medida', 'Costo_Unitario', 'Costo_Paquete', 'Cant_Paquete', 'Stock_Actual', 'Stock_Minimo']);
 
     // 2. Create 'Productos' sheet
     let productosSheet = doc.sheetsByTitle['Productos'];

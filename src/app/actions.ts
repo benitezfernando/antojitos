@@ -87,16 +87,28 @@ export async function addInsumo(formData: FormData): Promise<{ success: boolean;
     const costo = requirePositiveNumber(formData.get('costo'), 'Costo unitario');
     const stock = requirePositiveNumber(formData.get('stock'), 'Stock actual');
     const minStock = requirePositiveNumber(formData.get('minStock'), 'Stock mínimo');
+    const costoPaquete = parseFloat(String(formData.get('costoPaquete') ?? '0')) || 0;
+    const cantPaquete = parseFloat(String(formData.get('cantPaquete') ?? '0')) || 0;
 
     const { doc } = await getGoogleSheet();
     const sheet = doc.sheetsByTitle['Insumos'];
     if (!sheet) throw new Error("No se encontró la pestaña Insumos");
+
+    await sheet.loadHeaderRow();
+    const headers: string[] = sheet.headerValues ?? [];
+    const needed = ['Costo_Paquete', 'Cant_Paquete'];
+    const missing = needed.filter(h => !headers.includes(h));
+    if (missing.length > 0) {
+      await sheet.setHeaderRow([...headers, ...missing]);
+    }
 
     await sheet.addRow({
       ID: uniqueId('INS'),
       Nombre: nombre,
       Unidad_Medida: unidad,
       Costo_Unitario: costo,
+      Costo_Paquete: costoPaquete,
+      Cant_Paquete: cantPaquete,
       Stock_Actual: stock,
       Stock_Minimo: minStock,
     });
@@ -227,16 +239,29 @@ export async function updateInsumo(formData: FormData) {
     const costo = requirePositiveNumber(formData.get('costo'), 'Costo unitario');
     const stock = requirePositiveNumber(formData.get('stock'), 'Stock actual');
     const minStock = requirePositiveNumber(formData.get('minStock'), 'Stock mínimo');
+    const costoPaquete = parseFloat(String(formData.get('costoPaquete') ?? '0')) || 0;
+    const cantPaquete = parseFloat(String(formData.get('cantPaquete') ?? '0')) || 0;
 
     const { doc } = await getGoogleSheet();
     const sheet = doc.sheetsByTitle['Insumos'];
     if (!sheet) throw new Error("No se encontró la hoja Insumos");
+
+    await sheet.loadHeaderRow();
+    const headers: string[] = sheet.headerValues ?? [];
+    const needed = ['Costo_Paquete', 'Cant_Paquete'];
+    const missing = needed.filter(h => !headers.includes(h));
+    if (missing.length > 0) {
+      await sheet.setHeaderRow([...headers, ...missing]);
+    }
+
     const rows = await sheet.getRows();
     const row = rows.find(r => r.get('ID') === id);
     if (!row) throw new Error("Insumo no encontrado");
     row.set('Nombre', nombre);
     row.set('Unidad_Medida', unidad);
     row.set('Costo_Unitario', costo);
+    row.set('Costo_Paquete', costoPaquete);
+    row.set('Cant_Paquete', cantPaquete);
     row.set('Stock_Actual', stock);
     row.set('Stock_Minimo', minStock);
     await row.save();

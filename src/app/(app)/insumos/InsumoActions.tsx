@@ -7,9 +7,21 @@ interface Insumo {
   id: string;
   name: string;
   unit: string;
-  cost: number;
+  cost: number;       // precio/kg normalizado
+  costoPaquete: number;
+  cantPaquete: number;
   stock: number;
   minStock: number;
+}
+
+function factorABase(unidad: string): { factor: number; unidadBase: string } | null {
+  switch (unidad) {
+    case 'kg': return { factor: 1, unidadBase: 'kg' };
+    case 'g':  return { factor: 0.001, unidadBase: 'kg' };
+    case 'lt': return { factor: 1, unidadBase: 'lt' };
+    case 'ml': return { factor: 0.001, unidadBase: 'lt' };
+    default:   return null;
+  }
 }
 
 export function InsumoRow({ insumo }: { insumo: Insumo }) {
@@ -19,12 +31,20 @@ export function InsumoRow({ insumo }: { insumo: Insumo }) {
   const [values, setValues] = useState({
     nombre: insumo.name,
     unidad: insumo.unit,
-    costo: String(insumo.cost),
+    cantPaquete: insumo.cantPaquete > 0 ? String(insumo.cantPaquete) : '',
+    precioPaquete: insumo.costoPaquete > 0 ? String(insumo.costoPaquete) : '',
     stock: String(insumo.stock),
     minStock: String(insumo.minStock),
   });
 
   const isCritical = insumo.stock <= insumo.minStock;
+
+  const cant = parseFloat(values.cantPaquete.replace(',', '.')) || 0;
+  const precio = parseFloat(values.precioPaquete.replace(',', '.')) || 0;
+  const info = factorABase(values.unidad);
+  const precioBase = info && cant > 0 && precio > 0
+    ? precio / (cant * info.factor)
+    : (cant > 0 && precio > 0 ? precio / cant : null);
 
   const handleDelete = async () => {
     if (!confirm(`¿Eliminar "${insumo.name}"? Esta acción no se puede deshacer.`)) return;
@@ -45,7 +65,9 @@ export function InsumoRow({ insumo }: { insumo: Insumo }) {
     fd.set('id', insumo.id);
     fd.set('nombre', values.nombre);
     fd.set('unidad', values.unidad);
-    fd.set('costo', values.costo);
+    fd.set('costo', String(precioBase ?? 0));
+    fd.set('costoPaquete', String(precio));
+    fd.set('cantPaquete', String(cant));
     fd.set('stock', values.stock);
     fd.set('minStock', values.minStock);
     const res = await updateInsumo(fd);
@@ -73,27 +95,50 @@ export function InsumoRow({ insumo }: { insumo: Insumo }) {
                   <option value="g">g</option>
                   <option value="lt">lt</option>
                   <option value="ml">ml</option>
-                  <option value="unidad">unidad</option>
+                  <option value="u">u</option>
                 </select>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '0.65rem', marginBottom: '1rem' }}>
+
+            <div className="grid-2col-equal" style={{ gap: '0.65rem', marginBottom: '0.65rem' }}>
               <div className="form-group">
-                <label className="label">Costo $</label>
-                <input className="input" type="text" inputMode="decimal" value={values.costo}
-                  onChange={e => setValues(v => ({ ...v, costo: e.target.value }))} />
+                <label className="label">Cant. paquete ({values.unidad})</label>
+                <input className="input" type="number" step="0.001" placeholder="Ej. 200"
+                  value={values.cantPaquete}
+                  onChange={e => setValues(v => ({ ...v, cantPaquete: e.target.value }))} />
               </div>
               <div className="form-group">
+                <label className="label">Precio paquete ($)</label>
+                <input className="input" type="number" step="0.01" placeholder="Ej. 4600"
+                  value={values.precioPaquete}
+                  onChange={e => setValues(v => ({ ...v, precioPaquete: e.target.value }))} />
+              </div>
+            </div>
+
+            {cant > 0 && precio > 0 && (
+              <div style={{
+                padding: '0.5rem 0.75rem', borderRadius: 'var(--r-md)', marginBottom: '0.65rem',
+                background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '0.85rem',
+              }}>
+                Precio por <strong>{info?.unidadBase ?? 'unidad'}</strong>:{' '}
+                <strong style={{ color: 'var(--primary-dark)' }}>${(precioBase ?? 0).toFixed(2)}</strong>
+                <span style={{ color: 'var(--text-subtle)', marginLeft: '0.4rem' }}>(usado en recetas)</span>
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '0.65rem', marginBottom: '1rem' }}>
+              <div className="form-group">
                 <label className="label">Stock actual</label>
-                <input className="input" type="text" inputMode="decimal" value={values.stock}
+                <input className="input" type="number" step="0.001" value={values.stock}
                   onChange={e => setValues(v => ({ ...v, stock: e.target.value }))} />
               </div>
               <div className="form-group">
                 <label className="label">Stock mínimo</label>
-                <input className="input" type="text" inputMode="decimal" value={values.minStock}
+                <input className="input" type="number" step="0.001" value={values.minStock}
                   onChange={e => setValues(v => ({ ...v, minStock: e.target.value }))} />
               </div>
             </div>
+
             {error && <div className="alert alert-error" style={{ marginBottom: '0.75rem' }}>{error}</div>}
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button type="submit" disabled={loading} className="btn btn-primary" style={{ flex: 1 }}>
@@ -114,10 +159,17 @@ export function InsumoRow({ insumo }: { insumo: Insumo }) {
       <td className="hide-mobile" style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>{insumo.id}</td>
       <td style={{ fontWeight: 600 }}>{insumo.name}</td>
       <td><span className="badge badge-neutral">{insumo.unit}</span></td>
-      <td className="hide-mobile">${insumo.cost.toFixed(2)}</td>
+      <td className="hide-mobile">
+        <span style={{ fontWeight: 600 }}>${insumo.cost.toFixed(2)}</span>
+        {insumo.costoPaquete > 0 && (
+          <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
+            paq: ${insumo.costoPaquete.toFixed(0)} / {insumo.cantPaquete}{insumo.unit}
+          </span>
+        )}
+      </td>
       <td>
         <span style={{ color: isCritical ? 'var(--danger)' : undefined, fontWeight: isCritical ? 700 : undefined }}>
-          {isCritical && '⚠ '}{insumo.stock}
+          {isCritical && '⚠ '}{insumo.stock} {insumo.unit}
         </span>
       </td>
       <td>
