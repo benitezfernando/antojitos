@@ -1,38 +1,20 @@
-import { getGoogleSheet } from "@/lib/google-sheets";
-import { InsumoRow } from "./InsumoActions";
-import AddInsumoForm from "./AddInsumoForm";
+import { apiFetch, APIError } from '@/lib/api-client';
+import type { Insumo } from '@/lib/types';
+import { InsumoRow } from './InsumoActions';
+import AddInsumoForm from './AddInsumoForm';
 
 export const dynamic = 'force-dynamic';
 
 export default async function InsumosPage() {
-  let insumos: any[] = [];
-  let errorMsg = null;
+  let insumos: Insumo[] = [];
+  let errorMsg: string | null = null;
 
   try {
-    const { doc } = await getGoogleSheet();
-    const sheet = doc.sheetsByTitle['Insumos'];
-    if (sheet) {
-      const rows = await sheet.getRows();
-      const seen = new Set<string>();
-      insumos = rows
-        .map(r => ({
-          id: r.get('ID'),
-          name: r.get('Nombre'),
-          unit: r.get('Unidad_Medida'),
-          cost: parseFloat(r.get('Costo_Unitario')) || 0,
-          costoPaquete: parseFloat(r.get('Costo_Paquete')) || 0,
-          cantPaquete: parseFloat(r.get('Cant_Paquete')) || 0,
-          stock: parseFloat(r.get('Stock_Actual')) || 0,
-          minStock: parseFloat(r.get('Stock_Minimo')) || 0,
-        }))
-        .filter(i => {
-          if (!i.id || seen.has(i.id)) return false;
-          seen.add(i.id);
-          return true;
-        });
-    }
-  } catch {
-    errorMsg = 'Error conectando a la base de datos.';
+    insumos = await apiFetch<Insumo[]>('/insumos');
+  } catch (error) {
+    errorMsg = error instanceof APIError
+      ? `Error de API: ${error.message}`
+      : 'Error conectando a la base de datos.';
   }
 
   return (

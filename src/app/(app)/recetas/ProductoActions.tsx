@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { deleteProducto, updateProductoConReceta } from '@/app/actions';
+import { apiFetch } from '@/lib/api-client';
+import type { UpdateProductoRequest, Producto } from '@/lib/types';
 
 interface Insumo { id: string; name: string; unit: string; cost: number; }
 interface Ingrediente { insumoId: string; cantidad: string; unidad: string; }
@@ -33,31 +34,12 @@ function factorConversion(unidadInsumo: string, unidadReceta: string): number {
   return 1;
 }
 
-function parseLocalNumber(val: any): number {
-  if (val === null || val === undefined) return 0;
-  let str = String(val).trim();
-  if (!str) return 0;
-  // Handle 1.500,50 format (Argentina) vs 1,500.50 (US)
-  if (str.includes('.') && str.includes(',')) {
-    const lastDot = str.lastIndexOf('.');
-    const lastComma = str.lastIndexOf(',');
-    if (lastComma > lastDot) {
-      str = str.replace(/\./g, '').replace(',', '.'); // 1.500,50 -> 1500.50
-    } else {
-      str = str.replace(/,/g, ''); // 1,500.50 -> 1500.50
-    }
-  } else if (str.includes(',')) {
-    str = str.replace(',', '.'); // 1500,50 -> 1500.50
-  }
-  return parseFloat(str) || 0;
-}
-
 function calcularPreview(ingredientes: Ingrediente[], insumos: Insumo[], margen: number, rinde: number) {
   const costoTotal = ingredientes.reduce((acc, ing) => {
     const ins = insumos.find(i => i.id === ing.insumoId);
     if (!ins) return acc;
     const factor = factorConversion(ins.unit, ing.unidad);
-    return acc + ins.cost * parseLocalNumber(ing.cantidad) * factor;
+    return acc + ins.cost * (parseFloat(ing.cantidad) || 0) * factor;
   }, 0);
   const costoUnitario = rinde > 0 ? costoTotal / rinde : costoTotal;
   return { costoTotal, costoUnitario, precio: costoUnitario * (1 + margen / 100) };
@@ -90,7 +72,7 @@ function ProductoAccionesInner({ id, name, categoria, margen, costo, precio, sto
       : [{ insumoId: insumos[0]?.id || '', cantidad: '', unidad: insumos[0]?.unit || '' }]
   );
 
-  const rindeNum = parseLocalNumber(rindeVal);
+  const rindeNum = parseFloat(rindeVal) || 0;
   const preview = calcularPreview(ingredientes, insumos, margenVal, rindeNum);
 
   const addIng = () => setIngredientes(p => [...p, { insumoId: insumos[0]?.id || '', cantidad: '', unidad: insumos[0]?.unit || '' }]);
@@ -101,32 +83,44 @@ function ProductoAccionesInner({ id, name, categoria, margen, costo, precio, sto
   const handleDelete = async () => {
     if (!confirm(`¿Eliminar "${name}" y toda su receta? No se puede deshacer.`)) return;
     setLoading(true);
-    await deleteProducto(id);
+    try {
+      await apiFetch(`/productos/${id}`, { method: 'DELETE' });
+      onSaved();
+    } catch (err: any) {
+      setError(err.message ?? 'Error al eliminar');
+      setLoading(false);
+    }
   };
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (rindeNum < 1) {
-      setError('El rinde debe ser al menos 1 unidad.');
-      return;
-    }
+    if (rindeNum < 1) { setError('El rinde debe ser al menos 1 unidad.'); return; }
     setLoading(true);
     setError(null);
     setStatus(null);
-    const fd = new FormData(e.currentTarget);
-    fd.set('rinde', String(rindeNum));
-    ingredientes.forEach((ing, i) => {
-      fd.set(`insumoId_${i}`, ing.insumoId);
-      fd.set(`cantidad_${i}`, ing.cantidad);
-      fd.set(`unidad_${i}`, ing.unidad);
-    });
-    const res = await updateProductoConReceta(fd);
-    setLoading(false);
-    if (res.success) {
-      setStatus({ costo: res.costoProduccion!, precio: res.precioVenta! });
+
+    const form = e.currentTarget;
+    const body: UpdateProductoRequest = {
+      nombre: (form.elements.namedItem('nombre') as HTMLInputElement).value.trim(),
+      categoria: (form.elements.namedItem('categoria') as HTMLSelectElement).value,
+      stock,
+      margen_pct: margenVal,
+      rinde_receta: rindeNum,
+      ingredientes: ingredientes.map(ing => ({
+        insumo_id: ing.insumoId,
+        cantidad: parseFloat(ing.cantidad) || 0,
+        unidad: ing.unidad,
+      })),
+    };
+
+    try {
+      const prod = await apiFetch<Producto>(`/productos/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+      setStatus({ costo: prod.costo_produccion.toFixed(2), precio: prod.precio_venta_sugerido.toFixed(2) });
       setTimeout(() => { setEditing(false); setStatus(null); onSaved(); }, 1500);
-    } else {
-      setError(res.error ?? 'Error al guardar');
+    } catch (err: any) {
+      setError(err.message ?? 'Error al guardar');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -135,8 +129,6 @@ function ProductoAccionesInner({ id, name, categoria, margen, costo, precio, sto
       <tr>
         <td colSpan={7} style={{ padding: '1.25rem 1rem', background: 'var(--primary-light)' }}>
           <form onSubmit={handleSave}>
-            <input type="hidden" name="prodId" value={id} />
-
             <div className="grid-2col-equal" style={{ gap: '0.65rem', marginBottom: '0.75rem' }}>
               <div className="form-group">
                 <label className="label">Nombre</label>
@@ -162,15 +154,8 @@ function ProductoAccionesInner({ id, name, categoria, margen, costo, precio, sto
                   {rindeNum >= 1 ? `${rindeNum} unidades` : 'debe ser ≥ 1'}
                 </strong>
               </label>
-              <input
-                className="input"
-                name="rinde"
-                type="number"
-                min="1"
-                step="1"
-                value={rindeVal}
-                onChange={e => setRindeVal(e.target.value)}
-              />
+              <input className="input" name="rinde" type="number" min="1" step="1"
+                value={rindeVal} onChange={e => setRindeVal(e.target.value)} />
             </div>
 
             <div style={{ marginBottom: '0.75rem' }}>
@@ -307,4 +292,3 @@ function ProductoAccionesInner({ id, name, categoria, margen, costo, precio, sto
     </tr>
   );
 }
-

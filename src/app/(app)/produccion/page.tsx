@@ -1,6 +1,7 @@
-import { getGoogleSheet } from "@/lib/google-sheets";
-import ProduccionForm from "./ProduccionForm";
-import VentaForm from "./VentaForm";
+import { apiFetch, APIError } from '@/lib/api-client';
+import type { Producto, RegistroProduccion, Venta } from '@/lib/types';
+import ProduccionForm from './ProduccionForm';
+import VentaForm from './VentaForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,95 +15,21 @@ function formatFecha(iso: string) {
 }
 
 export default async function ProduccionPage() {
-  let productos: any[] = [];
-  let recetas: any[] = [];
-  let insumos: any[] = [];
-  let historialProduccion: any[] = [];
-  let historialVentas: any[] = [];
-  let errorMsg = null;
+  let productos: Producto[] = [];
+  let historialProduccion: RegistroProduccion[] = [];
+  let historialVentas: Venta[] = [];
+  let errorMsg: string | null = null;
 
   try {
-    const { doc } = await getGoogleSheet();
-
-    const insumosSheet = doc.sheetsByTitle['Insumos'];
-    if (insumosSheet) {
-      const rows = await insumosSheet.getRows();
-      insumos = rows.map(r => ({
-        id: r.get('ID'),
-        stock: parseFloat(r.get('Stock_Actual')) || 0,
-      }));
-    }
-
-    const recetasSheet = doc.sheetsByTitle['Recetas'];
-    if (recetasSheet) {
-      const rows = await recetasSheet.getRows();
-      recetas = rows.map(r => ({
-        prodId: r.get('ID_Producto'),
-        insumoId: r.get('ID_Insumo'),
-        cantidad: parseFloat(String(r.get('Cantidad_Necesaria') ?? '0').replace(',', '.')) || 0,
-      }));
-    }
-
-    const insumosMap = new Map(insumos.map(i => [i.id, i.stock]));
-
-    const productosSheet = doc.sheetsByTitle['Productos'];
-    if (productosSheet) {
-      const rows = await productosSheet.getRows();
-      const seen = new Set<string>();
-      const rawProductos = rows
-        .map(r => ({
-          id: r.get('ID'),
-          name: r.get('Nombre'),
-          precio: parseFloat(r.get('Precio_Venta_Sugerido')) || 0,
-          stock: parseFloat(r.get('Stock_Actual')) || 0,
-        }))
-        .filter(p => {
-          if (!p.id || seen.has(p.id)) return false;
-          seen.add(p.id); return true;
-        });
-
-      productos = rawProductos.map(prod => {
-        const ings = recetas.filter(r => r.prodId === prod.id);
-        if (ings.length === 0) return { ...prod, capacidad: 'Sin receta' };
-        const capacidad = Math.floor(
-          Math.min(...ings.map(ing => {
-            const stockIns = insumosMap.get(ing.insumoId) ?? 0;
-            if (ing.cantidad === 0) return 0;
-            return stockIns / ing.cantidad;
-          }))
-        );
-        return { ...prod, capacidad };
-      });
-    }
-
-    const produccionSheet = doc.sheetsByTitle['Produccion'];
-    if (produccionSheet) {
-      const rows = await produccionSheet.getRows();
-      historialProduccion = rows
-        .map(r => ({
-          id: r.get('ID'),
-          nombreProducto: r.get('Nombre_Producto'),
-          cantidad: parseFloat(r.get('Cantidad')) || 0,
-          fecha: r.get('Fecha') || '',
-        }))
-        .reverse().slice(0, 20);
-    }
-
-    const ventasSheet = doc.sheetsByTitle['Ventas'];
-    if (ventasSheet) {
-      const rows = await ventasSheet.getRows();
-      historialVentas = rows
-        .map(r => ({
-          id: r.get('ID'),
-          nombreProducto: r.get('Nombre_Producto'),
-          cantidad: parseFloat(r.get('Cantidad')) || 0,
-          total: parseFloat(r.get('Total')) || 0,
-          fecha: r.get('Fecha') || '',
-        }))
-        .reverse().slice(0, 20);
-    }
-  } catch (error: any) {
-    errorMsg = `Error de conexión: ${error.message}`;
+    [productos, historialProduccion, historialVentas] = await Promise.all([
+      apiFetch<Producto[]>('/productos'),
+      apiFetch<RegistroProduccion[]>('/produccion'),
+      apiFetch<Venta[]>('/ventas'),
+    ]);
+  } catch (error) {
+    errorMsg = error instanceof APIError
+      ? `Error de API: ${error.message}`
+      : 'Error de conexión.';
   }
 
   const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
@@ -113,6 +40,14 @@ export default async function ProduccionPage() {
   });
   const totalVentasHoy = ventasHoy.reduce((acc, v) => acc + v.total, 0);
   const unidadesHoy = ventasHoy.reduce((acc, v) => acc + v.cantidad, 0);
+
+  const productosParaForms = productos.map(p => ({
+    id: p.id,
+    name: p.nombre,
+    precio: p.precio_venta_sugerido,
+    stock: p.stock_actual,
+    capacidad: p.stock_actual,
+  }));
 
   return (
     <div className="page fade-in">
@@ -138,7 +73,7 @@ export default async function ProduccionPage() {
         </div>
         <div className="kpi-card">
           <span className="kpi-label">Con stock</span>
-          <p className="kpi-value">{productos.filter(p => p.stock > 0).length}</p>
+          <p className="kpi-value">{productos.filter(p => p.stock_actual > 0).length}</p>
           <span className="kpi-sub">productos disponibles</span>
         </div>
       </div>
@@ -153,10 +88,10 @@ export default async function ProduccionPage() {
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
             Descuenta insumos del inventario y suma al stock del producto.
           </p>
-          {productos.length === 0 ? (
+          {productosParaForms.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No hay productos con receta aún.</p>
           ) : (
-            <ProduccionForm productos={productos} />
+            <ProduccionForm productos={productosParaForms} />
           )}
         </div>
 
@@ -167,10 +102,10 @@ export default async function ProduccionPage() {
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
             Descuenta del stock del producto y registra el ingreso.
           </p>
-          {productos.filter(p => p.stock > 0).length === 0 ? (
+          {productosParaForms.filter(p => p.stock > 0).length === 0 ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No hay productos con stock. Registrá producción primero.</p>
           ) : (
-            <VentaForm productos={productos.filter(p => p.stock > 0)} />
+            <VentaForm productos={productosParaForms.filter(p => p.stock > 0)} />
           )}
         </div>
 
@@ -194,7 +129,7 @@ export default async function ProduccionPage() {
                 <tbody>
                   {historialProduccion.map((reg, i) => (
                     <tr key={reg.id || i}>
-                      <td style={{ fontWeight: 600 }}>{reg.nombreProducto}</td>
+                      <td style={{ fontWeight: 600 }}>{reg.nombre_producto}</td>
                       <td>{reg.cantidad}</td>
                       <td className="hide-mobile" style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>{formatFecha(reg.fecha)}</td>
                     </tr>
@@ -220,7 +155,7 @@ export default async function ProduccionPage() {
                 <tbody>
                   {historialVentas.map((vta, i) => (
                     <tr key={vta.id || i}>
-                      <td style={{ fontWeight: 600 }}>{vta.nombreProducto}</td>
+                      <td style={{ fontWeight: 600 }}>{vta.nombre_producto}</td>
                       <td>{vta.cantidad}</td>
                       <td style={{ fontWeight: 700, color: 'var(--primary-dark)' }}>${vta.total.toFixed(2)}</td>
                       <td className="hide-mobile" style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>{formatFecha(vta.fecha)}</td>

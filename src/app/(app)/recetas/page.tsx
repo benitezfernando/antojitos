@@ -1,6 +1,7 @@
-import { getGoogleSheet } from "@/lib/google-sheets";
-import RecetaForm from "./RecetaForm";
-import { ProductoAcciones } from "./ProductoActions";
+import { apiFetch, APIError } from '@/lib/api-client';
+import type { Insumo, Producto } from '@/lib/types';
+import RecetaForm from './RecetaForm';
+import { ProductoAcciones } from './ProductoActions';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,98 +16,35 @@ function factorConversion(unidadInsumo: string, unidadReceta: string): number {
   return 1;
 }
 
-function parseLocalNumber(val: any): number {
-  if (val === null || val === undefined) return 0;
-  let str = String(val).trim();
-  if (!str) return 0;
-  if (str.includes('.') && str.includes(',')) {
-    const lastDot = str.lastIndexOf('.');
-    const lastComma = str.lastIndexOf(',');
-    if (lastComma > lastDot) str = str.replace(/\./g, '').replace(',', '.');
-    else str = str.replace(/,/g, '');
-  } else if (str.includes(',')) {
-    str = str.replace(',', '.');
-  }
-  return parseFloat(str) || 0;
-}
-
 export default async function RecetasPage() {
-  let insumos: any[] = [];
-  let productos: any[] = [];
-  let recetas: any[] = [];
-  let errorMsg = null;
+  let insumos: Insumo[] = [];
+  let productos: Producto[] = [];
+  let errorMsg: string | null = null;
 
   try {
-    const { doc } = await getGoogleSheet();
-
-    const insumosSheet = doc.sheetsByTitle['Insumos'];
-    if (insumosSheet) {
-      const rows = await insumosSheet.getRows();
-      insumos = rows.map(r => ({
-        id: r.get('ID'),
-        name: r.get('Nombre'),
-        unit: r.get('Unidad_Medida'),
-        cost: parseLocalNumber(r.get('Costo_Unitario')),
-        stock: parseLocalNumber(r.get('Stock_Actual')),
-      }));
-    }
-
-    const productosSheet = doc.sheetsByTitle['Productos'];
-    if (productosSheet) {
-      const rows = await productosSheet.getRows();
-      productos = rows.map(r => ({
-        id: r.get('ID'),
-        name: r.get('Nombre'),
-        categoria: r.get('Categoria'),
-        costo: parseLocalNumber(r.get('Costo_Produccion')),
-        margen: parseLocalNumber(r.get('Margen_Ganancia')),
-        precio: parseLocalNumber(r.get('Precio_Venta_Sugerido')),
-        stock: parseLocalNumber(r.get('Stock_Actual')),
-        rinde: parseLocalNumber(r.get('Rinde_Receta')) || 1,
-      }));
-    }
-
-    const recetasSheet = doc.sheetsByTitle['Recetas'];
-    if (recetasSheet) {
-      const rows = await recetasSheet.getRows();
-      recetas = rows.map(r => ({
-        prodId: r.get('ID_Producto'),
-        insumoId: r.get('ID_Insumo'),
-        cantidad: parseLocalNumber(r.get('Cantidad_Necesaria')),
-        unidad: r.get('Unidad') || '',
-      }));
-    }
-  } catch {
-    errorMsg = 'Error conectando a la base de datos.';
+    [insumos, productos] = await Promise.all([
+      apiFetch<Insumo[]>('/insumos'),
+      apiFetch<Producto[]>('/productos'),
+    ]);
+  } catch (error) {
+    errorMsg = error instanceof APIError
+      ? `Error de API: ${error.message}`
+      : 'Error conectando a la base de datos.';
   }
-
-  const seenInsumos = new Set<string>();
-  insumos = insumos.filter(i => {
-    if (!i.id || seenInsumos.has(i.id)) return false;
-    seenInsumos.add(i.id); return true;
-  });
-
-  const seenProductos = new Set<string>();
-  productos = productos.filter(p => {
-    if (!p.id || seenProductos.has(p.id)) return false;
-    seenProductos.add(p.id); return true;
-  });
 
   const insumosMap = new Map(insumos.map(i => [i.id, i]));
 
   const productosConCapacidad = productos.map(prod => {
-    const ings = recetas.filter(r => r.prodId === prod.id);
-    if (ings.length === 0) return { ...prod, capacidad: null };
-    const rinde = prod.rinde > 0 ? prod.rinde : 1;
-    // Cuántas unidades puedo producir dado el stock de cada insumo
-    // stock_insumo / (cantNecesaria / rinde) = stock_insumo * rinde / cantNecesaria
+    const ings = prod.receta ?? [];
+    if (ings.length === 0) return { ...prod, capacidad: null as number | null };
+    const rinde = prod.rinde_receta > 0 ? prod.rinde_receta : 1;
     const capacidad = Math.floor(
       Math.min(...ings.map(ing => {
-        const ins = insumosMap.get(ing.insumoId);
-        if (!ins || ing.cantidad === 0) return 0;
-        const qtyInBaseUnit = ing.cantidad * factorConversion(ins.unit, ing.unidad);
+        const ins = insumosMap.get(ing.insumo_id);
+        if (!ins || ing.cantidad_necesaria === 0) return 0;
+        const qtyInBaseUnit = ing.cantidad_necesaria * factorConversion(ins.unidad_medida, ing.unidad);
         if (qtyInBaseUnit === 0) return 0;
-        return (ins.stock * rinde) / qtyInBaseUnit;
+        return (ins.stock_actual * rinde) / qtyInBaseUnit;
       }))
     );
     return { ...prod, capacidad };
@@ -155,17 +93,26 @@ export default async function RecetasPage() {
                       <ProductoAcciones
                         key={`${prod.id}-${idx}`}
                         id={prod.id}
-                        name={prod.name}
+                        name={prod.nombre}
                         categoria={prod.categoria}
-                        margen={prod.margen}
-                        costo={prod.costo}
-                        precio={prod.precio}
-                        stock={prod.stock}
-                        rinde={prod.rinde}
+                        margen={prod.margen_ganancia}
+                        costo={prod.costo_produccion}
+                        precio={prod.precio_venta_sugerido}
+                        stock={prod.stock_actual}
+                        rinde={prod.rinde_receta}
                         cap={cap}
                         capColor={capColor}
-                        recetaIngredientes={recetas.filter(r => r.prodId === prod.id).map(r => ({ insumoId: r.insumoId, cantidad: r.cantidad, unidad: r.unidad }))}
-                        insumos={insumos}
+                        recetaIngredientes={(prod.receta ?? []).map(r => ({
+                          insumoId: r.insumo_id,
+                          cantidad: r.cantidad_necesaria,
+                          unidad: r.unidad,
+                        }))}
+                        insumos={insumos.map(i => ({
+                          id: i.id,
+                          name: i.nombre,
+                          unit: i.unidad_medida,
+                          cost: i.costo_unitario,
+                        }))}
                       />
                     );
                   })}
@@ -185,21 +132,21 @@ export default async function RecetasPage() {
               Primero cargá insumos en "Materias Primas".
             </p>
           ) : (
-            <RecetaForm insumos={insumos} />
+            <RecetaForm insumos={insumos.map(i => ({ id: i.id, name: i.nombre, unit: i.unidad_medida, cost: i.costo_unitario }))} />
           )}
         </div>
 
       </div>
 
       {/* Cards de ingredientes */}
-      {recetas.length > 0 && (
+      {productos.some(p => (p.receta ?? []).length > 0) && (
         <div className="card">
           <div className="section-header">
             <span className="section-title">Ingredientes por producto</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
             {productos.map(prod => {
-              const ings = recetas.filter(r => r.prodId === prod.id);
+              const ings = prod.receta ?? [];
               if (ings.length === 0) return null;
               return (
                 <div key={prod.id} style={{
@@ -209,25 +156,25 @@ export default async function RecetasPage() {
                   background: 'var(--surface-alt)',
                 }}>
                   <div style={{ background: 'var(--primary)', padding: '0.65rem 1rem' }}>
-                    <h3 style={{ color: 'white', fontSize: '0.9rem', fontWeight: 700, margin: 0 }}>{prod.name}</h3>
+                    <h3 style={{ color: 'white', fontSize: '0.9rem', fontWeight: 700, margin: 0 }}>{prod.nombre}</h3>
                     <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem', margin: '0.15rem 0 0' }}>
-                      Rinde {prod.rinde > 1 ? prod.rinde : 1} unidades
+                      Rinde {prod.rinde_receta > 1 ? prod.rinde_receta : 1} unidades
                     </p>
                   </div>
                   <ul style={{ listStyle: 'none', padding: '0.5rem 1rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                     {ings.map((ing, i) => {
-                      const ins = insumosMap.get(ing.insumoId);
-                      const qty = Number.isInteger(ing.cantidad)
-                        ? String(ing.cantidad)
-                        : ing.cantidad.toFixed(3).replace(/\.?0+$/, '');
+                      const ins = insumosMap.get(ing.insumo_id);
+                      const qty = Number.isInteger(ing.cantidad_necesaria)
+                        ? String(ing.cantidad_necesaria)
+                        : ing.cantidad_necesaria.toFixed(3).replace(/\.?0+$/, '');
                       return (
                         <li key={i} style={{
                           display: 'flex', justifyContent: 'space-between',
                           fontSize: '0.85rem', padding: '0.3rem 0',
                           borderBottom: i < ings.length - 1 ? '1px solid var(--border)' : 'none',
                         }}>
-                          <span style={{ color: 'var(--text-muted)' }}>{ins?.name || ing.insumoId}</span>
-                          <span style={{ fontWeight: 700 }}>{qty} {ing.unidad || ins?.unit}</span>
+                          <span style={{ color: 'var(--text-muted)' }}>{ins?.nombre || ing.insumo_id}</span>
+                          <span style={{ fontWeight: 700 }}>{qty} {ing.unidad || ins?.unidad_medida}</span>
                         </li>
                       );
                     })}

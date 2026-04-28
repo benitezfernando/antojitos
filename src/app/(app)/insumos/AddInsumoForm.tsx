@@ -1,21 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import { addInsumo } from '@/app/actions';
+import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/api-client';
+import type { CreateInsumoRequest, Insumo } from '@/lib/types';
 
-// Devuelve cuántas unidades base hay en 1 unidad de la medida dada.
-// kg → base kg: 1 | g → base kg: 0.001 | lt → base lt: 1 | ml → base lt: 0.001
 function factorABase(unidad: string): { factor: number; unidadBase: string } | null {
   switch (unidad) {
     case 'kg': return { factor: 1, unidadBase: 'kg' };
     case 'g':  return { factor: 0.001, unidadBase: 'kg' };
     case 'lt': return { factor: 1, unidadBase: 'lt' };
     case 'ml': return { factor: 0.001, unidadBase: 'lt' };
-    default:   return null; // unidad / pieza: no hay normalización
+    default:   return null;
   }
 }
 
 export default function AddInsumoForm() {
+  const router = useRouter();
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [unidad, setUnidad] = useState('kg');
@@ -33,23 +34,28 @@ export default function AddInsumoForm() {
     e.preventDefault();
     setLoading(true);
     setStatus(null);
-    const fd = new FormData(e.currentTarget);
-    // Sobreescribir costo con el precio normalizado por unidad base
-    if (precioBase !== null) {
-      fd.set('costo', String(precioBase));
-    }
-    fd.set('costoPaquete', String(precio));
-    fd.set('cantPaquete', String(cant));
-    const res = await addInsumo(fd);
-    setLoading(false);
-    if (res.success) {
+
+    const body: CreateInsumoRequest = {
+      nombre: (e.currentTarget.elements.namedItem('nombre') as HTMLInputElement).value.trim(),
+      unidad_paquete: unidad,
+      costo_paquete: precio,
+      cant_paquete: cant,
+      stock_actual: parseFloat((e.currentTarget.elements.namedItem('stock') as HTMLInputElement).value) || 0,
+      stock_minimo: parseFloat((e.currentTarget.elements.namedItem('minStock') as HTMLInputElement).value) || 0,
+    };
+
+    try {
+      await apiFetch<Insumo>('/insumos', { method: 'POST', body: JSON.stringify(body) });
       setStatus({ ok: true, msg: 'Insumo guardado correctamente.' });
       (e.target as HTMLFormElement).reset();
       setUnidad('kg');
       setCantPaquete('');
       setPrecioPaquete('');
-    } else {
-      setStatus({ ok: false, msg: res.error ?? 'Error al guardar' });
+      router.refresh();
+    } catch (err: any) {
+      setStatus({ ok: false, msg: err.message ?? 'Error al guardar' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -75,7 +81,7 @@ export default function AddInsumoForm() {
         <div className="form-group">
           <label className="label">Cantidad del paquete</label>
           <input className="input" name="cantPaqueteDisplay" type="number" step="0.001" required
-            placeholder={unidad === 'u' ? 'Ej. 12' : `Ej. 1`}
+            placeholder={unidad === 'u' ? 'Ej. 12' : 'Ej. 1'}
             value={cantPaquete}
             onChange={e => setCantPaquete(e.target.value)} />
         </div>
@@ -89,7 +95,6 @@ export default function AddInsumoForm() {
           onChange={e => setPrecioPaquete(e.target.value)} />
       </div>
 
-      {/* Preview precio normalizado */}
       {cant > 0 && precio > 0 && (
         <div style={{
           padding: '0.75rem 1rem', borderRadius: 'var(--r-md)',

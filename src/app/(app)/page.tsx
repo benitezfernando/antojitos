@@ -1,68 +1,29 @@
-import { getGoogleSheet } from "@/lib/google-sheets";
+import { apiFetch, APIError } from '@/lib/api-client';
+import type { DashboardKPIs, Insumo } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  let insumos: any[] = [];
-  let recetasCount = 0;
-  let errorMsg = null;
-  let valorizacionStock = 0;
-  let insumosCriticosCount = 0;
-  let totalVentasHoy = 0;
-  let unidadesVendidasHoy = 0;
+  let kpis: DashboardKPIs | null = null;
+  let insumos: Insumo[] = [];
+  let errorMsg: string | null = null;
 
   try {
-    const { doc } = await getGoogleSheet();
-
-    const insumosSheet = doc.sheetsByTitle['Insumos'];
-    if (insumosSheet) {
-      const rows = await insumosSheet.getRows();
-      const seen = new Set<string>();
-      insumos = rows
-        .map(r => ({
-          id: r.get('ID'),
-          name: r.get('Nombre'),
-          stock: parseFloat(r.get('Stock_Actual')) || 0,
-          unit: r.get('Unidad_Medida'),
-          minStock: parseFloat(r.get('Stock_Minimo')) || 0,
-          costo: parseFloat(r.get('Costo_Unitario')) || 0,
-        }))
-        .filter(i => {
-          if (!i.id || seen.has(i.id)) return false;
-          seen.add(i.id);
-          return true;
-        });
-
-      insumosCriticosCount = insumos.filter(i => i.stock <= i.minStock).length;
-      valorizacionStock = insumos.reduce((acc, i) => acc + i.stock * i.costo, 0);
-    }
-
-    const productosSheet = doc.sheetsByTitle['Productos'];
-    if (productosSheet) {
-      const pRows = await productosSheet.getRows();
-      const seenProds = new Set(pRows.map(r => r.get('ID')).filter(Boolean));
-      recetasCount = seenProds.size;
-    }
-
-    const ventasSheet = doc.sheetsByTitle['Ventas'];
-    if (ventasSheet) {
-      // Fecha local Argentina (UTC-3). `Fecha` se guarda en ISO UTC; comparamos por el día
-      // según la zona horaria del negocio, no la del servidor.
-      const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
-      const vRows = await ventasSheet.getRows();
-      const ventasHoy = vRows.filter(r => {
-        const fecha = r.get('Fecha') || '';
-        if (!fecha) return false;
-        const diaVenta = new Date(fecha).toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
-        return diaVenta === hoy;
-      });
-      totalVentasHoy = ventasHoy.reduce((acc, r) => acc + (parseFloat(r.get('Total')) || 0), 0);
-      unidadesVendidasHoy = ventasHoy.reduce((acc, r) => acc + (parseFloat(r.get('Cantidad')) || 0), 0);
-    }
-  } catch (error: any) {
-    console.error(error);
-    errorMsg = `Error de conexión: ${error.message || 'Verifica tus accesos en Vercel.'}`;
+    [kpis, insumos] = await Promise.all([
+      apiFetch<DashboardKPIs>('/dashboard'),
+      apiFetch<Insumo[]>('/insumos'),
+    ]);
+  } catch (error) {
+    errorMsg = error instanceof APIError
+      ? `Error de API: ${error.message}`
+      : 'Error de conexión. Verificá que el backend esté corriendo.';
   }
+
+  const totalVentasHoy = kpis?.total_ventas_hoy ?? 0;
+  const unidadesVendidasHoy = kpis?.unidades_vendidas_hoy ?? 0;
+  const productosActivos = kpis?.productos_activos ?? 0;
+  const insumosCriticosCount = kpis?.insumos_criticos ?? 0;
+  const valorizacionStock = kpis?.valorizacion_stock ?? 0;
 
   return (
     <div className="page fade-in">
@@ -87,7 +48,7 @@ export default async function Home() {
 
             <div className="kpi-card">
               <span className="kpi-label">Productos activos</span>
-              <p className="kpi-value">{recetasCount}</p>
+              <p className="kpi-value">{productosActivos}</p>
               <span className="kpi-sub">con receta registrada</span>
             </div>
 
@@ -133,17 +94,17 @@ export default async function Home() {
                   </thead>
                   <tbody>
                     {insumos.slice(0, 8).map((item, idx) => {
-                      const isCritical = item.stock <= item.minStock;
-                      const isLow = !isCritical && item.stock <= item.minStock * 1.5;
+                      const isCritical = item.stock_actual <= item.stock_minimo;
+                      const isLow = !isCritical && item.stock_actual <= item.stock_minimo * 1.5;
                       const badgeClass = isCritical ? 'badge-danger' : isLow ? 'badge-warning' : 'badge-ok';
                       const statusLabel = isCritical ? 'Crítico' : isLow ? 'Bajo' : 'OK';
                       return (
                         <tr key={`${item.id}-${idx}`}>
-                          <td style={{ fontWeight: 600 }}>{item.name}</td>
+                          <td style={{ fontWeight: 600 }}>{item.nombre}</td>
                           <td style={{ color: isCritical ? 'var(--danger)' : undefined, fontWeight: isCritical ? 700 : undefined }}>
-                            {item.stock} {item.unit}
+                            {item.stock_actual} {item.unidad_medida}
                           </td>
-                          <td className="hide-mobile" style={{ color: 'var(--text-muted)' }}>{item.minStock} {item.unit}</td>
+                          <td className="hide-mobile" style={{ color: 'var(--text-muted)' }}>{item.stock_minimo} {item.unidad_medida}</td>
                           <td><span className={`badge ${badgeClass}`}>{statusLabel}</span></td>
                         </tr>
                       );

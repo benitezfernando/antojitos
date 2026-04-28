@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { registrarProduccion } from '@/app/actions';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/api-client';
+import type { RegistrarProduccionRequest } from '@/lib/types';
 
 interface Producto {
   id: string;
@@ -11,23 +13,36 @@ interface Producto {
 }
 
 export default function ProduccionForm({ productos }: { productos: Producto[] }) {
-  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; error?: string } | null>(null);
   const [selectedId, setSelectedId] = useState('');
 
   const selectedProd = productos.find(p => p.id === selectedId);
   const cap = selectedProd?.capacidad;
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const form = e.currentTarget;
+    setLoading(true);
     setResult(null);
-    startTransition(async () => {
-      const res = await registrarProduccion(formData);
-      setResult(res);
-      if (res.success) { form.reset(); setSelectedId(''); }
-    });
+    const form = e.currentTarget;
+
+    const body: RegistrarProduccionRequest = {
+      producto_id: selectedId,
+      cantidad: parseFloat((form.elements.namedItem('cantidad') as HTMLInputElement).value) || 0,
+    };
+
+    try {
+      await apiFetch('/produccion', { method: 'POST', body: JSON.stringify(body) });
+      setResult({ success: true });
+      form.reset();
+      setSelectedId('');
+      router.refresh();
+    } catch (err: any) {
+      setResult({ success: false, error: err.message });
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -68,8 +83,8 @@ export default function ProduccionForm({ productos }: { productos: Producto[] })
         </div>
       )}
 
-      <button type="submit" disabled={isPending} className="btn btn-primary" style={{ width: '100%' }}>
-        {isPending ? 'Registrando...' : 'Registrar Producción'}
+      <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%' }}>
+        {loading ? 'Registrando...' : 'Registrar Producción'}
       </button>
     </form>
   );

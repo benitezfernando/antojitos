@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { registrarVenta } from '@/app/actions';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/api-client';
+import type { RegistrarVentaRequest, Venta } from '@/lib/types';
 
 interface Producto {
   id: string;
@@ -11,7 +13,8 @@ interface Producto {
 }
 
 export default function VentaForm({ productos }: { productos: Producto[] }) {
-  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; error?: string; total?: string } | null>(null);
   const [selectedId, setSelectedId] = useState('');
   const [cantidad, setCantidad] = useState('');
@@ -21,16 +24,29 @@ export default function VentaForm({ productos }: { productos: Producto[] }) {
     ? selectedProd.precio * (parseFloat(cantidad.replace(',', '.')) || 0)
     : null;
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const form = e.currentTarget;
+    setLoading(true);
     setResult(null);
-    startTransition(async () => {
-      const res = await registrarVenta(formData);
-      setResult(res);
-      if (res.success) { form.reset(); setSelectedId(''); setCantidad(''); }
-    });
+    const form = e.currentTarget;
+
+    const body: RegistrarVentaRequest = {
+      producto_id: selectedId,
+      cantidad: parseFloat(cantidad.replace(',', '.')) || 0,
+    };
+
+    try {
+      const venta = await apiFetch<Venta>('/ventas', { method: 'POST', body: JSON.stringify(body) });
+      setResult({ success: true, total: venta.total.toFixed(2) });
+      form.reset();
+      setSelectedId('');
+      setCantidad('');
+      router.refresh();
+    } catch (err: any) {
+      setResult({ success: false, error: err.message });
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -73,8 +89,8 @@ export default function VentaForm({ productos }: { productos: Producto[] }) {
         </div>
       )}
 
-      <button type="submit" disabled={isPending} className="btn btn-accent" style={{ width: '100%' }}>
-        {isPending ? 'Registrando...' : 'Registrar Venta'}
+      <button type="submit" disabled={loading} className="btn btn-accent" style={{ width: '100%' }}>
+        {loading ? 'Registrando...' : 'Registrar Venta'}
       </button>
     </form>
   );

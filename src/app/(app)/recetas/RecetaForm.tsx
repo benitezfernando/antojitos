@@ -1,7 +1,9 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { addProductoConReceta } from '@/app/actions';
+import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/api-client';
+import type { CreateProductoRequest, Producto } from '@/lib/types';
 
 interface Insumo { id: string; name: string; unit: string; cost: number; }
 interface Ingrediente { insumoId: string; cantidad: string; unidad: string; }
@@ -24,12 +26,12 @@ function calcularCosto(ingredientes: Ingrediente[], insumos: Insumo[], margen: n
     const factor = factorConversion(ins.unit, ing.unidad);
     return acc + ins.cost * parseFloat(ing.cantidad || '0') * factor;
   }, 0);
-  // El costo en la receta es por "rinde" unidades. Precio sugerido es por unidad.
   const costoUnitario = rinde > 0 ? costoTotal / rinde : costoTotal;
   return { costoTotal, costoUnitario, precio: costoUnitario * (1 + margen / 100) };
 }
 
 export default function RecetaForm({ insumos }: { insumos: Insumo[] }) {
+  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [ingredientes, setIngredientes] = useState<Ingrediente[]>([
     { insumoId: insumos[0]?.id || '', cantidad: '', unidad: insumos[0]?.unit || 'u' },
@@ -54,22 +56,36 @@ export default function RecetaForm({ insumos }: { insumos: Insumo[] }) {
     e.preventDefault();
     setLoading(true);
     setStatus(null);
-    const fd = new FormData(e.currentTarget);
-    ingredientes.forEach((ing, i) => {
-      fd.set(`insumoId_${i}`, ing.insumoId);
-      fd.set(`cantidad_${i}`, ing.cantidad);
-      fd.set(`unidad_${i}`, ing.unidad);
-    });
-    const res = await addProductoConReceta(fd);
-    setLoading(false);
-    if (res.success) {
-      setStatus({ ok: true, msg: `Guardado. Costo total: $${res.costoProduccion} · Precio unitario: $${res.precioVenta}` });
+
+    const form = e.currentTarget;
+    const body: CreateProductoRequest = {
+      nombre: (form.elements.namedItem('nombre') as HTMLInputElement).value.trim(),
+      categoria: (form.elements.namedItem('categoria') as HTMLSelectElement).value,
+      stock: parseFloat((form.elements.namedItem('stock') as HTMLInputElement).value) || 0,
+      margen_pct: margen,
+      rinde_receta: rinde,
+      ingredientes: ingredientes.map(ing => ({
+        insumo_id: ing.insumoId,
+        cantidad: parseFloat(ing.cantidad) || 0,
+        unidad: ing.unidad,
+      })),
+    };
+
+    try {
+      const prod = await apiFetch<Producto>('/productos', { method: 'POST', body: JSON.stringify(body) });
+      setStatus({
+        ok: true,
+        msg: `Guardado. Costo total: $${prod.costo_produccion.toFixed(2)} · Precio unitario: $${prod.precio_venta_sugerido.toFixed(2)}`,
+      });
       formRef.current?.reset();
       setIngredientes([{ insumoId: insumos[0]?.id || '', cantidad: '', unidad: insumos[0]?.unit || 'u' }]);
       setMargen(30);
       setRinde(1);
-    } else {
-      setStatus({ ok: false, msg: res.error ?? 'Error al guardar' });
+      router.refresh();
+    } catch (err: any) {
+      setStatus({ ok: false, msg: err.message ?? 'Error al guardar' });
+    } finally {
+      setLoading(false);
     }
   };
 

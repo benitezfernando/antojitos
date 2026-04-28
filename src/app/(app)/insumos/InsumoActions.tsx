@@ -1,18 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { deleteInsumo, updateInsumo } from '@/app/actions';
-
-interface Insumo {
-  id: string;
-  name: string;
-  unit: string;
-  cost: number;       // precio/kg normalizado
-  costoPaquete: number;
-  cantPaquete: number;
-  stock: number;
-  minStock: number;
-}
+import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/api-client';
+import type { Insumo, UpdateInsumoRequest } from '@/lib/types';
 
 function factorABase(unidad: string): { factor: number; unidadBase: string } | null {
   switch (unidad) {
@@ -25,19 +16,20 @@ function factorABase(unidad: string): { factor: number; unidadBase: string } | n
 }
 
 export function InsumoRow({ insumo }: { insumo: Insumo }) {
+  const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [values, setValues] = useState({
-    nombre: insumo.name,
-    unidad: insumo.unit,
-    cantPaquete: insumo.cantPaquete > 0 ? String(insumo.cantPaquete) : '',
-    precioPaquete: insumo.costoPaquete > 0 ? String(insumo.costoPaquete) : '',
-    stock: String(insumo.stock),
-    minStock: String(insumo.minStock),
+    nombre: insumo.nombre,
+    unidad: insumo.unidad_medida,
+    cantPaquete: insumo.cant_paquete > 0 ? String(insumo.cant_paquete) : '',
+    precioPaquete: insumo.costo_paquete > 0 ? String(insumo.costo_paquete) : '',
+    stock: String(insumo.stock_actual),
+    minStock: String(insumo.stock_minimo),
   });
 
-  const isCritical = insumo.stock <= insumo.minStock;
+  const isCritical = insumo.stock_actual <= insumo.stock_minimo;
 
   const cant = parseFloat(values.cantPaquete.replace(',', '.')) || 0;
   const precio = parseFloat(values.precioPaquete.replace(',', '.')) || 0;
@@ -47,12 +39,14 @@ export function InsumoRow({ insumo }: { insumo: Insumo }) {
     : (cant > 0 && precio > 0 ? precio / cant : null);
 
   const handleDelete = async () => {
-    if (!confirm(`¿Eliminar "${insumo.name}"? Esta acción no se puede deshacer.`)) return;
+    if (!confirm(`¿Eliminar "${insumo.nombre}"? Esta acción no se puede deshacer.`)) return;
     setLoading(true);
     setError(null);
-    const res = await deleteInsumo(insumo.id);
-    if (!res.success) {
-      setError(res.error ?? 'Error al eliminar');
+    try {
+      await apiFetch(`/insumos/${insumo.id}`, { method: 'DELETE' });
+      router.refresh();
+    } catch (err: any) {
+      setError(err.message ?? 'Error al eliminar');
       setLoading(false);
     }
   };
@@ -61,19 +55,23 @@ export function InsumoRow({ insumo }: { insumo: Insumo }) {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const fd = new FormData();
-    fd.set('id', insumo.id);
-    fd.set('nombre', values.nombre);
-    fd.set('unidad', values.unidad);
-    fd.set('costo', String(precioBase ?? 0));
-    fd.set('costoPaquete', String(precio));
-    fd.set('cantPaquete', String(cant));
-    fd.set('stock', values.stock);
-    fd.set('minStock', values.minStock);
-    const res = await updateInsumo(fd);
-    setLoading(false);
-    if (res.success) setEditing(false);
-    else setError(res.error ?? 'Error al guardar');
+    const body: UpdateInsumoRequest = {
+      nombre: values.nombre,
+      unidad_paquete: values.unidad,
+      costo_paquete: precio,
+      cant_paquete: cant,
+      stock_actual: parseFloat(values.stock) || 0,
+      stock_minimo: parseFloat(values.minStock) || 0,
+    };
+    try {
+      await apiFetch<Insumo>(`/insumos/${insumo.id}`, { method: 'PUT', body: JSON.stringify(body) });
+      setEditing(false);
+      router.refresh();
+    } catch (err: any) {
+      setError(err.message ?? 'Error al guardar');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (editing) {
@@ -157,19 +155,19 @@ export function InsumoRow({ insumo }: { insumo: Insumo }) {
   return (
     <tr>
       <td className="hide-mobile" style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>{insumo.id}</td>
-      <td style={{ fontWeight: 600 }}>{insumo.name}</td>
-      <td><span className="badge badge-neutral">{insumo.unit}</span></td>
+      <td style={{ fontWeight: 600 }}>{insumo.nombre}</td>
+      <td><span className="badge badge-neutral">{insumo.unidad_medida}</span></td>
       <td className="hide-mobile">
-        <span style={{ fontWeight: 600 }}>${insumo.cost.toFixed(2)}</span>
-        {insumo.costoPaquete > 0 && (
+        <span style={{ fontWeight: 600 }}>${insumo.costo_unitario.toFixed(2)}</span>
+        {insumo.costo_paquete > 0 && (
           <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
-            paq: ${insumo.costoPaquete.toFixed(0)} / {insumo.cantPaquete}{insumo.unit}
+            paq: ${insumo.costo_paquete.toFixed(0)} / {insumo.cant_paquete}{insumo.unidad_medida}
           </span>
         )}
       </td>
       <td>
         <span style={{ color: isCritical ? 'var(--danger)' : undefined, fontWeight: isCritical ? 700 : undefined }}>
-          {isCritical && '⚠ '}{insumo.stock} {insumo.unit}
+          {isCritical && '⚠ '}{insumo.stock_actual} {insumo.unidad_medida}
         </span>
       </td>
       <td>
