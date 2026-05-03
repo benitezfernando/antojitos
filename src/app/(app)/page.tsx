@@ -1,5 +1,6 @@
 import { apiFetch, APIError } from '@/lib/api-client';
 import type { DashboardKPIs, Insumo } from '@/lib/types';
+import { KpiValue } from '@/components/KpiValue';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,18 +20,20 @@ export default async function Home() {
       : 'Error de conexión. Verificá que el backend esté corriendo.';
   }
 
-  const totalVentasHoy = kpis?.total_ventas_hoy ?? 0;
-  const unidadesVendidasHoy = kpis?.unidades_vendidas_hoy ?? 0;
-  const productosActivos = kpis?.productos_activos ?? 0;
-  const insumosCriticosCount = kpis?.insumos_criticos ?? 0;
-  const valorizacionStock = kpis?.valorizacion_stock ?? 0;
+  const totalVentasHoy       = kpis?.total_ventas_hoy    ?? 0;
+  const unidadesVendidasHoy  = kpis?.unidades_vendidas_hoy ?? 0;
+  const productosActivos     = kpis?.productos_activos   ?? 0;
+  const insumosCriticosCount = kpis?.insumos_criticos    ?? 0;
+  const valorizacionStock    = kpis?.valorizacion_stock  ?? 0;
 
   return (
     <div className="page fade-in">
 
       <div className="page-header">
-        <h1 className="page-title">Dashboard</h1>
-        <p className="page-subtitle">Resumen operativo de Antojitos</p>
+        <div className="page-header-text">
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-subtitle">Resumen operativo de Antojitos</p>
+        </div>
       </div>
 
       {errorMsg ? (
@@ -38,33 +41,51 @@ export default async function Home() {
       ) : (
         <>
           {/* KPIs */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
 
-            <div className="kpi-card" style={{ '--kpi-color': 'var(--accent)' } as React.CSSProperties}>
+            <div className="kpi-card">
+              <div className="kpi-icon">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 1h2l2 6h5l1-4H5"/><circle cx="6" cy="11.5" r="1"/><circle cx="10" cy="11.5" r="1"/>
+                </svg>
+              </div>
               <span className="kpi-label">Ventas hoy</span>
-              <p className="kpi-value" style={{ color: 'var(--primary-dark)' }}>${totalVentasHoy.toFixed(2)}</p>
+              <KpiValue value={totalVentasHoy} prefix="$" decimals={2} />
               <span className="kpi-sub">{unidadesVendidasHoy} unidades vendidas</span>
             </div>
 
             <div className="kpi-card">
+              <div className="kpi-icon">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M7 1l1.5 3.5L13 5l-3 3 .7 4.2L7 10.5l-3.7 1.7L4 8 1 5l4.5-.5z"/>
+                </svg>
+              </div>
               <span className="kpi-label">Productos activos</span>
-              <p className="kpi-value">{productosActivos}</p>
+              <KpiValue value={productosActivos} />
               <span className="kpi-sub">con receta registrada</span>
             </div>
 
             <div className="kpi-card">
+              <div className="kpi-icon">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M7 1v12M3 5l4-4 4 4M3 9l4 4 4-4"/>
+                </svg>
+              </div>
               <span className="kpi-label">Insumos críticos</span>
-              <p className="kpi-value" style={{ color: insumosCriticosCount > 0 ? 'var(--danger)' : 'var(--success)' }}>
-                {insumosCriticosCount}
-              </p>
-              <span className="kpi-sub" style={{ color: insumosCriticosCount > 0 ? 'var(--danger)' : undefined }}>
+              <KpiValue value={insumosCriticosCount} />
+              <span className="kpi-sub" style={{ color: insumosCriticosCount > 0 ? 'var(--rose)' : undefined }}>
                 {insumosCriticosCount > 0 ? 'requieren reposición' : 'todo en orden'}
               </span>
             </div>
 
             <div className="kpi-card">
+              <div className="kpi-icon">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="1" y="4" width="12" height="8" rx="1.5"/><path d="M4 4V3a3 3 0 0 1 6 0v1"/>
+                </svg>
+              </div>
               <span className="kpi-label">Stock valorizado</span>
-              <p className="kpi-value">${valorizacionStock.toFixed(0)}</p>
+              <KpiValue value={valorizacionStock} prefix="$" decimals={0} />
               <span className="kpi-sub">costo directo invertido</span>
             </div>
 
@@ -80,9 +101,15 @@ export default async function Home() {
             </div>
 
             {insumos.length === 0 ? (
-              <p className="empty-state">No hay insumos registrados.</p>
+              <div className="empty-state">
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="8" y="8" width="24" height="24" rx="3"/>
+                  <path d="M14 20h12M14 14h12M14 26h6"/>
+                </svg>
+                <p>No hay insumos registrados.</p>
+              </div>
             ) : (
-              <div className="table-wrap">
+              <div className="table-wrap responsive-cards">
                 <table>
                   <thead>
                     <tr>
@@ -96,16 +123,19 @@ export default async function Home() {
                     {insumos.slice(0, 8).map((item, idx) => {
                       const isCritical = item.stock_actual <= item.stock_minimo;
                       const isLow = !isCritical && item.stock_actual <= item.stock_minimo * 1.5;
+                      const rowClass   = isCritical ? 'row-danger' : isLow ? 'row-warning' : 'row-ok';
                       const badgeClass = isCritical ? 'badge-danger' : isLow ? 'badge-warning' : 'badge-ok';
                       const statusLabel = isCritical ? 'Crítico' : isLow ? 'Bajo' : 'OK';
                       return (
-                        <tr key={`${item.id}-${idx}`}>
-                          <td style={{ fontWeight: 600 }}>{item.nombre}</td>
-                          <td style={{ color: isCritical ? 'var(--danger)' : undefined, fontWeight: isCritical ? 700 : undefined }}>
+                        <tr key={`${item.id}-${idx}`} className={rowClass}>
+                          <td data-label="Insumo" style={{ fontWeight: 600 }}>{item.nombre}</td>
+                          <td data-label="Stock" style={{ color: isCritical ? 'var(--rose)' : undefined, fontWeight: isCritical ? 700 : undefined }}>
                             {item.stock_actual} {item.unidad_medida}
                           </td>
-                          <td className="hide-mobile" style={{ color: 'var(--text-muted)' }}>{item.stock_minimo} {item.unidad_medida}</td>
-                          <td><span className={`badge ${badgeClass}`}>{statusLabel}</span></td>
+                          <td data-label="Mínimo" className="hide-mobile" style={{ color: 'var(--text-muted)' }}>
+                            {item.stock_minimo} {item.unidad_medida}
+                          </td>
+                          <td data-label="Estado"><span className={`badge ${badgeClass}`}>{statusLabel}</span></td>
                         </tr>
                       );
                     })}

@@ -21,8 +21,11 @@ export default async function InsumosPage() {
     <div className="page fade-in">
 
       <div className="page-header">
-        <h1 className="page-title">Materias Primas</h1>
-        <p className="page-subtitle">Inventario de insumos y costos unitarios</p>
+        <div className="page-header-text">
+          <h1 className="page-title">Materias Primas</h1>
+          <p className="page-subtitle">Inventario de insumos y costos unitarios</p>
+        </div>
+        <span className="badge badge-neutral" style={{ flexShrink: 0, fontSize: '0.8rem' }}>{insumos.length} insumos</span>
       </div>
 
       {errorMsg && <div className="alert alert-error" style={{ marginBottom: '1.5rem' }}>{errorMsg}</div>}
@@ -33,9 +36,8 @@ export default async function InsumosPage() {
         <div className="card">
           <div className="section-header">
             <span className="section-title">Inventario actual</span>
-            <span className="badge badge-neutral">{insumos.length} insumos</span>
           </div>
-          <div className="table-wrap">
+          <div className="table-wrap responsive-cards">
             <table>
               <thead>
                 <tr>

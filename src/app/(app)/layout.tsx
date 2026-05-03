@@ -1,4 +1,6 @@
+import { ViewTransition } from 'react';
 import Sidebar from "@/components/Sidebar";
+import { ToastProvider } from "@/components/Toast";
 
 export default function AppLayout({
   children,
@@ -6,11 +8,15 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="app-container">
-      <Sidebar />
-      <main className="main-content">
-        {children}
-      </main>
-    </div>
+    <ToastProvider>
+      <div className="app-container">
+        <Sidebar />
+        <main className="main-content">
+          <ViewTransition>
+            {children}
+          </ViewTransition>
+        </main>
+      </div>
+    </ToastProvider>
   );
 }

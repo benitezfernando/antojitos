@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Outfit } from "next/font/google";
+import { Outfit, Geist, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 import InstallPrompt from "@/components/InstallPrompt";
@@ -7,6 +7,17 @@ import NavigationProgress from "@/components/NavigationProgress";
 
 const outfit = Outfit({
   subsets: ["latin"],
+  variable: "--font-outfit",
+});
+
+const geist = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
 });
 
 export const metadata: Metadata = {
@@ -24,7 +35,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#8d6e63",
+  themeColor: "#ff6b4a",
   width: "device-width",
   initialScale: 1,
 };
@@ -35,8 +46,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={outfit.className} suppressHydrationWarning>
-      <body>
+    <html
+      lang="es"
+      className={`${outfit.variable} ${geist.variable} ${jetbrainsMono.variable}`}
+      suppressHydrationWarning
+    >
+      <body style={{ fontFamily: "var(--font-outfit, 'Outfit'), system-ui, sans-serif" }}>
         <NavigationProgress />
         <ServiceWorkerRegistrar />
         <InstallPrompt />

@@ -54,8 +54,11 @@ export default async function RecetasPage() {
     <div className="page fade-in">
 
       <div className="page-header">
-        <h1 className="page-title">Recetas y Productos</h1>
-        <p className="page-subtitle">Armá tus recetas y calculá costos y precios de venta</p>
+        <div className="page-header-text">
+          <h1 className="page-title">Recetas y Productos</h1>
+          <p className="page-subtitle">Armá tus recetas y calculá costos y precios de venta</p>
+        </div>
+        <span className="badge badge-neutral" style={{ flexShrink: 0, fontSize: '0.8rem' }}>{productosConCapacidad.length} productos</span>
       </div>
 
       {errorMsg && <div className="alert alert-error" style={{ marginBottom: '1.5rem' }}>{errorMsg}</div>}
@@ -66,7 +69,6 @@ export default async function RecetasPage() {
         <div className="card">
           <div className="section-header">
             <span className="section-title">Catálogo de productos</span>
-            <span className="badge badge-neutral">{productosConCapacidad.length} productos</span>
           </div>
 
           {productosConCapacidad.length === 0 ? (

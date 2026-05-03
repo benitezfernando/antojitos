@@ -53,8 +53,10 @@ export default async function ProduccionPage() {
     <div className="page fade-in">
 
       <div className="page-header">
-        <h1 className="page-title">Producción y Ventas</h1>
-        <p className="page-subtitle">Registrá lo que producís y lo que vendés</p>
+        <div className="page-header-text">
+          <h1 className="page-title">Producción y Ventas</h1>
+          <p className="page-subtitle">Registrá lo que producís y lo que vendés</p>
+        </div>
       </div>
 
       {errorMsg && <div className="alert alert-error" style={{ marginBottom: '1.5rem' }}>{errorMsg}</div>}
