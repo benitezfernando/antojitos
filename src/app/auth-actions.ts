@@ -2,13 +2,14 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import bcrypt from 'bcryptjs';
 
 const VALID_USER = (process.env.ADMIN_USERNAME ?? '').replace(/^["']|["']$/g, '').trim();
-const VALID_PASS = (process.env.ADMIN_PASSWORD ?? '').replace(/^["']|["']$/g, '').trim();
+const PASSWORD_HASH = (process.env.ADMIN_PASSWORD_HASH ?? '').trim();
 const SESSION_COOKIE = 'antojitos_session_v2';
 
-if (!VALID_USER || !VALID_PASS) {
-  console.warn('[Auth] ADMIN_USERNAME o ADMIN_PASSWORD no están definidas en las variables de entorno.');
+if (!VALID_USER || !PASSWORD_HASH) {
+  console.warn('[Auth] ADMIN_USERNAME o ADMIN_PASSWORD_HASH no están definidas en las variables de entorno.');
 }
 
 export async function login(formData: FormData): Promise<void> {
@@ -20,14 +21,16 @@ export async function login(formData: FormData): Promise<void> {
     redirect('/login?error=1');
   }
 
-  if (user === VALID_USER && pass === VALID_PASS) {
+  const validUser = user === VALID_USER;
+  const validPass = PASSWORD_HASH ? await bcrypt.compare(pass, PASSWORD_HASH) : false;
+
+  if (validUser && validPass) {
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE, 'authenticated', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      // Sin maxAge ni expires → cookie de sesión: se borra al cerrar el navegador
     });
     const safeRedirect = redirectTo.startsWith('/') ? redirectTo : '/';
     redirect(safeRedirect);
