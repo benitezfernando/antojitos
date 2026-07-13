@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import bcrypt from 'bcryptjs';
+import { isAuthBypassEnabled } from '@/lib/auth-bypass';
 
 const VALID_USER = (process.env.ADMIN_USERNAME ?? '').replace(/^["']|["']$/g, '').trim();
 const PASSWORD_HASH = (process.env.ADMIN_PASSWORD_HASH ?? '').trim();
@@ -46,6 +47,10 @@ export async function logout(): Promise<void> {
 }
 
 export async function isAuthenticated(): Promise<boolean> {
+  // Defense-in-depth: refleja el bypass de middleware.ts para Server Components que llamen esto directo.
+  if (isAuthBypassEnabled()) {
+    return true;
+  }
   const cookieStore = await cookies();
   return cookieStore.get(SESSION_COOKIE)?.value === 'authenticated';
 }
