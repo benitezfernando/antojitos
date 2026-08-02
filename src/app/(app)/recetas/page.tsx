@@ -169,6 +169,9 @@ export default async function RecetasPage() {
                       const qty = Number.isInteger(ing.cantidad_necesaria)
                         ? String(ing.cantidad_necesaria)
                         : ing.cantidad_necesaria.toFixed(3).replace(/\.?0+$/, '');
+                      const costo = ins
+                        ? ing.cantidad_necesaria * factorConversion(ins.unidad_medida, ing.unidad) * ins.costo_unitario
+                        : null;
                       return (
                         <li key={i} style={{
                           display: 'flex', justifyContent: 'space-between',
@@ -176,7 +179,14 @@ export default async function RecetasPage() {
                           borderBottom: i < ings.length - 1 ? '1px solid var(--border)' : 'none',
                         }}>
                           <span style={{ color: 'var(--text-muted)' }}>{ins?.nombre || ing.insumo_id}</span>
-                          <span style={{ fontWeight: 700 }}>{qty} {ing.unidad || ins?.unidad_medida}</span>
+                          <span style={{ textAlign: 'right' }}>
+                            <span style={{ fontWeight: 700 }}>{qty} {ing.unidad || ins?.unidad_medida}</span>
+                            {costo !== null && (
+                              <span style={{ display: 'block', color: 'var(--text-subtle)', fontSize: '0.75rem' }}>
+                                ${costo.toFixed(2)}
+                              </span>
+                            )}
+                          </span>
                         </li>
                       );
                     })}
