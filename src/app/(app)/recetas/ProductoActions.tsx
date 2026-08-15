@@ -1,12 +1,24 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { apiFetch } from '@/lib/api-client';
-import type { UpdateProductoRequest, Producto } from '@/lib/types';
+import { useForm, useFieldArray, type Resolver } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { productoSchema, type ProductoFormValues } from '@/lib/schemas';
+import { useApiMutation } from '@/lib/use-api-mutation';
+import type { Producto } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { TableCell, TableRow } from '@/components/ui/table';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface Insumo { id: string; name: string; unit: string; cost: number; }
-interface Ingrediente { insumoId: string; cantidad: string; unidad: string; }
 
 interface Props {
   id: string;
@@ -34,261 +46,224 @@ function factorConversion(unidadInsumo: string, unidadReceta: string): number {
   return 1;
 }
 
-function calcularPreview(ingredientes: Ingrediente[], insumos: Insumo[], margen: number, rinde: number) {
+function calcularCosto(ingredientes: ProductoFormValues['ingredientes'], insumos: Insumo[], margen: number, rinde: number) {
   const costoTotal = ingredientes.reduce((acc, ing) => {
-    const ins = insumos.find(i => i.id === ing.insumoId);
+    const ins = insumos.find(i => i.id === ing.insumo_id);
     if (!ins) return acc;
-    const factor = factorConversion(ins.unit, ing.unidad);
-    return acc + ins.cost * (parseFloat(ing.cantidad) || 0) * factor;
+    return acc + ins.cost * (ing.cantidad || 0) * factorConversion(ins.unit, ing.unidad);
   }, 0);
   const costoUnitario = rinde > 0 ? costoTotal / rinde : costoTotal;
   return { costoTotal, costoUnitario, precio: costoUnitario * (1 + margen / 100) };
 }
 
-export function ProductoAcciones(props: Props) {
-  const router = useRouter();
-  const [saveKey, setSaveKey] = useState(0);
-
-  const handleSaved = () => {
-    setSaveKey(k => k + 1);
-    router.refresh();
-  };
-
-  return <ProductoAccionesInner key={saveKey} {...props} onSaved={handleSaved} />;
-}
-
-function ProductoAccionesInner({ id, name, categoria, margen, costo, precio, stock, rinde, cap, capColor, recetaIngredientes, insumos, onSaved }: Props & { onSaved: () => void }) {
+export function ProductoAcciones({ id, name, categoria, margen, costo, precio, stock, rinde, cap, capColor, recetaIngredientes, insumos }: Props) {
   const [editing, setEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<{ costo: string; precio: string } | null>(null);
 
   const margenInicial = margen > 0 && margen <= 2 ? Math.round(margen * 100) : margen > 0 ? Math.round(margen) : 30;
-  const [margenVal, setMargenVal] = useState(margenInicial);
-  const [rindeVal, setRindeVal] = useState(String(rinde > 0 ? rinde : 1));
-  const [ingredientes, setIngredientes] = useState<Ingrediente[]>(
-    recetaIngredientes.length > 0
-      ? recetaIngredientes.map(i => ({ insumoId: i.insumoId, cantidad: String(i.cantidad), unidad: i.unidad || insumos.find(ins => ins.id === i.insumoId)?.unit || 'u' }))
-      : [{ insumoId: insumos[0]?.id || '', cantidad: '', unidad: insumos[0]?.unit || '' }]
-  );
 
-  const rindeNum = parseFloat(rindeVal) || 0;
-  const preview = calcularPreview(ingredientes, insumos, margenVal, rindeNum);
-
-  const addIng = () => setIngredientes(p => [...p, { insumoId: insumos[0]?.id || '', cantidad: '', unidad: insumos[0]?.unit || '' }]);
-  const removeIng = (idx: number) => setIngredientes(p => p.filter((_, i) => i !== idx));
-  const updateIng = (idx: number, field: keyof Ingrediente, val: string) =>
-    setIngredientes(p => p.map((ing, i) => i === idx ? { ...ing, [field]: val } : ing));
-
-  const handleDelete = async () => {
-    if (!confirm(`¿Eliminar "${name}" y toda su receta? No se puede deshacer.`)) return;
-    setLoading(true);
-    try {
-      await apiFetch(`/productos/${id}`, { method: 'DELETE' });
-      onSaved();
-    } catch (err: any) {
-      setError(err.message ?? 'Error al eliminar');
-      setLoading(false);
-    }
-  };
-
-  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (rindeNum < 1) { setError('El rinde debe ser al menos 1 unidad.'); return; }
-    setLoading(true);
-    setError(null);
-    setStatus(null);
-
-    const form = e.currentTarget;
-    const body: UpdateProductoRequest = {
-      nombre: (form.elements.namedItem('nombre') as HTMLInputElement).value.trim(),
-      categoria: (form.elements.namedItem('categoria') as HTMLSelectElement).value,
+  const form = useForm<ProductoFormValues>({
+    resolver: zodResolver(productoSchema) as Resolver<ProductoFormValues>,
+    defaultValues: {
+      nombre: name,
+      categoria: categoria as ProductoFormValues['categoria'],
       stock,
-      margen_pct: margenVal,
-      rinde_receta: rindeNum,
-      ingredientes: ingredientes.map(ing => ({
-        insumo_id: ing.insumoId,
-        cantidad: parseFloat(ing.cantidad) || 0,
-        unidad: ing.unidad,
-      })),
-    };
+      margen_pct: margenInicial,
+      rinde_receta: rinde > 0 ? rinde : 1,
+      ingredientes: recetaIngredientes.length > 0
+        ? recetaIngredientes.map(i => ({
+            insumo_id: i.insumoId,
+            cantidad: i.cantidad,
+            unidad: (i.unidad || insumos.find(ins => ins.id === i.insumoId)?.unit || 'u') as ProductoFormValues['ingredientes'][number]['unidad'],
+          }))
+        : [{ insumo_id: insumos[0]?.id ?? '', cantidad: 0, unidad: (insumos[0]?.unit as ProductoFormValues['ingredientes'][number]['unidad']) ?? 'u' }],
+    },
+  });
+  const { fields, append, remove } = useFieldArray({ control: form.control, name: 'ingredientes' });
 
-    try {
-      const prod = await apiFetch<Producto>(`/productos/${id}`, { method: 'PUT', body: JSON.stringify(body) });
-      setStatus({ costo: prod.costo_produccion.toFixed(2), precio: prod.precio_venta_sugerido.toFixed(2) });
-      setTimeout(() => { setEditing(false); setStatus(null); onSaved(); }, 1500);
-    } catch (err: any) {
-      setError(err.message ?? 'Error al guardar');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const saveMutation = useApiMutation<ProductoFormValues, Producto>({
+    path: `/productos/${id}`,
+    method: 'PUT',
+    successMessage: (data) => `Guardado. Costo: $${data.costo_produccion.toFixed(2)} · Precio: $${data.precio_venta_sugerido.toFixed(2)}`,
+    onSuccess: () => setEditing(false),
+  });
+
+  const deleteMutation = useApiMutation<void, void>({
+    path: `/productos/${id}`,
+    method: 'DELETE',
+    successMessage: `"${name}" eliminado.`,
+  });
+
+  const values = form.watch();
+  const preview = calcularCosto(values.ingredientes ?? [], insumos, values.margen_pct ?? 0, values.rinde_receta ?? 0);
 
   if (editing) {
     return (
-      <tr>
-        <td colSpan={7} style={{ padding: '1.25rem 1rem', background: 'var(--primary-light)' }}>
-          <form onSubmit={handleSave}>
-            <div className="grid-2col-equal" style={{ gap: '0.65rem', marginBottom: '0.75rem' }}>
-              <div className="form-group">
-                <label className="label">Nombre</label>
-                <input className="input" name="nombre" defaultValue={name} required />
+      <TableRow>
+        <TableCell colSpan={7} className="bg-accent/40 p-5">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(values => saveMutation.mutate(values))} className="flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                <FormField control={form.control} name="nombre" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nombre</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="categoria" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Categoría</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        {['Cookies', 'Postres', 'Chocolates', 'Alfajores', 'Tortas', 'Otros'].map(c => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
               </div>
-              <div className="form-group">
-                <label className="label">Categoría</label>
-                <select className="input" name="categoria" defaultValue={categoria}>
-                  <option value="Cookies">Cookies</option>
-                  <option value="Postres">Postres</option>
-                  <option value="Chocolates">Chocolates</option>
-                  <option value="Alfajores">Alfajores</option>
-                  <option value="Tortas">Tortas</option>
-                  <option value="Otros">Otros</option>
-                </select>
-              </div>
-            </div>
 
-            <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-              <label className="label">
-                Rinde:{' '}
-                <strong style={{ color: rindeNum < 1 ? 'var(--danger)' : 'var(--primary-dark)' }}>
-                  {rindeNum >= 1 ? `${rindeNum} unidades` : 'debe ser ≥ 1'}
-                </strong>
-              </label>
-              <input className="input" name="rinde" type="number" min="1" step="1"
-                value={rindeVal} onChange={e => setRindeVal(e.target.value)} />
-            </div>
+              <FormField control={form.control} name="rinde_receta" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Rinde: <strong className="text-primary">{field.value} unidades</strong></FormLabel>
+                  <FormControl><Input type="number" min="1" step="1" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
 
-            <div style={{ marginBottom: '0.75rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <label className="label" style={{ margin: 0 }}>Ingredientes</label>
-                <button type="button" onClick={addIng}
-                  style={{ fontSize: '0.82rem', color: 'var(--primary-dark)', fontWeight: 700, cursor: 'pointer' }}>
-                  + Agregar
-                </button>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                {ingredientes.map((ing, idx) => (
-                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', padding: '0.5rem', borderRadius: '8px', background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                    <select value={ing.insumoId}
-                      onChange={e => {
-                        const ins = insumos.find(i => i.id === e.target.value);
-                        setIngredientes(p => p.map((item, i) => i === idx ? { ...item, insumoId: e.target.value, unidad: ins?.unit || item.unidad } : item));
-                      }}
-                      className="input">
-                      {insumos.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-                    </select>
-                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                      <input type="number" step="0.001" placeholder="Cantidad" value={ing.cantidad}
-                        onChange={e => updateIng(idx, 'cantidad', e.target.value)}
-                        className="input" style={{ flex: 2 }} />
-                      <select value={ing.unidad}
-                        onChange={e => updateIng(idx, 'unidad', e.target.value)}
-                        className="input" style={{ flex: 1 }}>
-                        <option value="kg">kg</option>
-                        <option value="g">g</option>
-                        <option value="lt">lt</option>
-                        <option value="ml">ml</option>
-                        <option value="u">u</option>
-                        <option value="cdta">cdta</option>
-                        <option value="cda">cda</option>
-                        <option value="taza">taza</option>
-                      </select>
-                      {ingredientes.length > 1 && (
-                        <button type="button" onClick={() => removeIng(idx)}
-                          style={{ color: 'var(--danger)', fontSize: '1.1rem', flexShrink: 0, padding: '0.2rem' }}>✕</button>
-                      )}
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-sm font-semibold">Ingredientes</span>
+                  <Button type="button" variant="link" size="sm" className="gap-1 px-0"
+                    onClick={() => append({ insumo_id: insumos[0]?.id ?? '', cantidad: 0, unidad: (insumos[0]?.unit as ProductoFormValues['ingredientes'][number]['unidad']) ?? 'u' })}>
+                    <Plus className="size-4" /> Agregar
+                  </Button>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {fields.map((f, idx) => (
+                    <div key={f.id} className="flex flex-col gap-2 rounded-lg border bg-background p-2">
+                      <FormField control={form.control} name={`ingredientes.${idx}.insumo_id`} render={({ field }) => (
+                        <Select onValueChange={(val) => {
+                          field.onChange(val);
+                          const ins = insumos.find(i => i.id === val);
+                          if (ins) form.setValue(`ingredientes.${idx}.unidad`, ins.unit as ProductoFormValues['ingredientes'][number]['unidad']);
+                        }} value={field.value}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {insumos.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )} />
+                      <div className="flex items-center gap-2">
+                        <FormField control={form.control} name={`ingredientes.${idx}.cantidad`} render={({ field }) => (
+                          <FormControl><Input type="number" step="0.001" placeholder="Cantidad" className="flex-[2]" {...field} /></FormControl>
+                        )} />
+                        <FormField control={form.control} name={`ingredientes.${idx}.unidad`} render={({ field }) => (
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {['kg', 'g', 'lt', 'ml', 'u', 'cdta', 'cda', 'taza'].map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        )} />
+                        {fields.length > 1 && (
+                          <Button type="button" variant="ghost" size="icon" onClick={() => remove(idx)} className="shrink-0 text-destructive">
+                            <X className="size-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
+                  ))}
+                </div>
+                <FormMessage>{form.formState.errors.ingredientes?.message}</FormMessage>
+              </div>
+
+              <FormField control={form.control} name="margen_pct" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ganancia: <strong className="text-primary">{field.value}%</strong></FormLabel>
+                  <FormControl>
+                    <input type="range" min={10} max={200} step={5} value={field.value} onChange={e => field.onChange(Number(e.target.value))}
+                      className="w-full accent-primary" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
+              {preview.costoTotal > 0 && (
+                <div className="grid grid-cols-3 gap-2 rounded-md border bg-background p-3">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">Costo total</p>
+                    <p className="font-bold">${preview.costoTotal.toFixed(2)}</p>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-              <label className="label">
-                Ganancia: <strong style={{ color: 'var(--primary-dark)' }}>{margenVal}%</strong>
-              </label>
-              <input type="range" name="margen" min="10" max="200" step="5" value={margenVal}
-                onChange={e => setMargenVal(parseInt(e.target.value))}
-                style={{ accentColor: 'var(--primary)', width: '100%' }} />
-            </div>
-
-            {preview.costoTotal > 0 && (
-              <div style={{
-                padding: '0.75rem 1rem', borderRadius: 'var(--r-md)', marginBottom: '0.75rem',
-                background: 'var(--surface)', border: '1px solid var(--border)',
-                display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem',
-              }}>
-                <div>
-                  <p className="label" style={{ marginBottom: '0.1rem' }}>Costo total</p>
-                  <p style={{ fontWeight: 800 }}>${preview.costoTotal.toFixed(2)}</p>
+                  <div className="text-center">
+                    <p className="text-xs font-semibold text-muted-foreground">Costo/unidad</p>
+                    <p className="font-bold">${preview.costoUnitario.toFixed(2)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-semibold text-muted-foreground">Precio/unidad</p>
+                    <p className="font-bold text-primary">${preview.precio.toFixed(2)}</p>
+                  </div>
                 </div>
-                <div style={{ textAlign: 'center' }}>
-                  <p className="label" style={{ marginBottom: '0.1rem' }}>Costo/unidad</p>
-                  <p style={{ fontWeight: 800 }}>${preview.costoUnitario.toFixed(2)}</p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p className="label" style={{ marginBottom: '0.1rem' }}>Precio/unidad</p>
-                  <p style={{ fontWeight: 800, color: 'var(--primary-dark)' }}>${preview.precio.toFixed(2)}</p>
-                </div>
-              </div>
-            )}
+              )}
 
-            {error && <div className="alert alert-error" style={{ marginBottom: '0.65rem' }}>{error}</div>}
-            {status && (
-              <div className="alert alert-success" style={{ marginBottom: '0.65rem' }}>
-                ✓ Guardado — Costo: ${status.costo} · Precio: ${status.precio}
+              <div className="flex gap-2">
+                <Button type="submit" disabled={saveMutation.isPending} className="flex-1">
+                  {saveMutation.isPending && <Loader2 className="animate-spin" />}
+                  {saveMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
+                </Button>
+                <Button type="button" variant="ghost" className="flex-1" onClick={() => setEditing(false)}>
+                  Cancelar
+                </Button>
               </div>
-            )}
-
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="submit" disabled={loading} className="btn btn-primary" style={{ flex: 1 }}>
-                {loading ? 'Guardando...' : '✓ Guardar cambios'}
-              </button>
-              <button type="button" onClick={() => setEditing(false)} className="btn btn-ghost" style={{ flex: 1 }}>
-                Cancelar
-              </button>
-            </div>
-          </form>
-        </td>
-      </tr>
+            </form>
+          </Form>
+        </TableCell>
+      </TableRow>
     );
   }
 
   return (
-    <tr>
-      <td style={{ fontWeight: 600 }}>{name}</td>
-      <td className="hide-mobile"><span className="badge badge-neutral">{categoria}</span></td>
-      <td style={{ color: 'var(--text-muted)' }}>${costo.toFixed(2)}</td>
-      <td style={{ fontWeight: 700, color: 'var(--primary-dark)' }}>${precio.toFixed(2)}</td>
-      <td>{stock}</td>
-      <td className="hide-mobile">
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)' }}>{rinde}u/batch · </span>
-        <span style={{ fontWeight: 700, color: capColor }}>
+    <TableRow>
+      <TableCell className="font-medium">{name}</TableCell>
+      <TableCell className="hidden md:table-cell"><Badge variant="secondary">{categoria}</Badge></TableCell>
+      <TableCell className="text-muted-foreground">${costo.toFixed(2)}</TableCell>
+      <TableCell className="font-semibold text-primary">${precio.toFixed(2)}</TableCell>
+      <TableCell>{stock}</TableCell>
+      <TableCell className="hidden md:table-cell">
+        <span className="text-xs text-muted-foreground">{rinde}u/batch · </span>
+        <span className="font-bold" style={{ color: capColor }}>
           {cap === null ? '—' : `${cap} u.`}
         </span>
-      </td>
-      <td>
-        <div style={{ display: 'flex', gap: '0.25rem' }}>
-          <button
-            onClick={() => { setEditing(true); setError(null); setStatus(null); }}
-            className="btn btn-ghost"
-            style={{ padding: '0.3rem 0.6rem', fontSize: '0.85rem' }}
-            title="Editar receta"
-          >✏️</button>
-          <button
-            onClick={handleDelete}
-            disabled={loading}
-            title="Eliminar"
-            style={{
-              background: 'none', border: 'none', cursor: loading ? 'wait' : 'pointer',
-              color: 'var(--danger)', fontSize: '0.85rem', padding: '0.3rem 0.6rem',
-              opacity: loading ? 0.5 : 1, borderRadius: '6px',
-            }}
-          >
-            {loading ? '...' : '🗑'}
-          </button>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={() => setEditing(true)} title="Editar receta">
+            <Pencil className="size-4" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger
+              render={
+                <Button variant="ghost" size="icon" disabled={deleteMutation.isPending} title="Eliminar" className="text-destructive hover:text-destructive" />
+              }
+            >
+              {deleteMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Eliminar &quot;{name}&quot;?</AlertDialogTitle>
+                <AlertDialogDescription>Esta acción no se puede deshacer y borra toda su receta.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={() => deleteMutation.mutate()}>Eliminar</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
