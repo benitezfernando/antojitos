@@ -1,97 +1,74 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { apiFetch } from '@/lib/api-client';
-import type { RegistrarVentaRequest, Venta } from '@/lib/types';
+import { useForm, type Resolver } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader2 } from 'lucide-react';
+import { ventaSchema, type VentaFormValues } from '@/lib/schemas';
+import { useApiMutation } from '@/lib/use-api-mutation';
+import type { Venta } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-interface Producto {
-  id: string;
-  name: string;
-  stock: number;
-  precio: number;
-}
+interface Producto { id: string; name: string; stock: number; precio: number; }
 
 export default function VentaForm({ productos }: { productos: Producto[] }) {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ success: boolean; error?: string; total?: string } | null>(null);
-  const [selectedId, setSelectedId] = useState('');
-  const [cantidad, setCantidad] = useState('');
+  const form = useForm<VentaFormValues>({
+    resolver: zodResolver(ventaSchema) as Resolver<VentaFormValues>,
+    defaultValues: { producto_id: '', cantidad: 0 },
+  });
 
+  const mutation = useApiMutation<VentaFormValues, Venta>({
+    path: '/ventas',
+    method: 'POST',
+    successMessage: (data) => `Venta registrada. Total: $${data.total.toFixed(2)}`,
+    onSuccess: () => form.reset(),
+  });
+
+  const selectedId = form.watch('producto_id');
+  const cantidad = form.watch('cantidad');
   const selectedProd = productos.find(p => p.id === selectedId);
-  const subtotal = selectedProd && cantidad
-    ? selectedProd.precio * (parseFloat(cantidad.replace(',', '.')) || 0)
-    : null;
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoading(true);
-    setResult(null);
-    const form = e.currentTarget;
-
-    const body: RegistrarVentaRequest = {
-      producto_id: selectedId,
-      cantidad: parseFloat(cantidad.replace(',', '.')) || 0,
-    };
-
-    try {
-      const venta = await apiFetch<Venta>('/ventas', { method: 'POST', body: JSON.stringify(body) });
-      setResult({ success: true, total: venta.total.toFixed(2) });
-      form.reset();
-      setSelectedId('');
-      setCantidad('');
-      router.refresh();
-    } catch (err: any) {
-      setResult({ success: false, error: err.message });
-    } finally {
-      setLoading(false);
-    }
-  }
+  const subtotal = selectedProd && cantidad ? selectedProd.precio * cantidad : null;
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(values => mutation.mutate(values))} className="flex flex-col gap-4">
+        <FormField control={form.control} name="producto_id" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Producto</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl><SelectTrigger><SelectValue placeholder="— Seleccioná un producto —" /></SelectTrigger></FormControl>
+              <SelectContent>
+                {productos.map(p => (
+                  <SelectItem key={p.id} value={p.id}>{p.name} — {p.stock} u. — ${p.precio.toFixed(2)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )} />
 
-      <div className="form-group">
-        <label className="label">Producto</label>
-        <select name="productoId" required className="input"
-          value={selectedId} onChange={e => setSelectedId(e.target.value)}>
-          <option value="">— Seleccioná un producto —</option>
-          {productos.map(p => (
-            <option key={p.id} value={p.id}>
-              {p.name} — {p.stock} u. — ${p.precio.toFixed(2)}
-            </option>
-          ))}
-        </select>
-      </div>
+        <FormField control={form.control} name="cantidad" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Cantidad vendida</FormLabel>
+            <FormControl><Input type="number" inputMode="decimal" min="1" step="1" placeholder="ej: 3" {...field} /></FormControl>
+            <FormMessage />
+          </FormItem>
+        )} />
 
-      <div className="form-group">
-        <label className="label">Cantidad vendida</label>
-        <input name="cantidad" type="number" inputMode="decimal" min="1" step="1"
-          required placeholder="ej: 3" className="input"
-          value={cantidad} onChange={e => setCantidad(e.target.value)} />
-      </div>
+        {subtotal !== null && subtotal > 0 && (
+          <div className="flex items-center justify-between rounded-md bg-accent/40 px-4 py-3">
+            <span className="text-sm text-muted-foreground">Total estimado</span>
+            <strong className="text-lg text-primary">${subtotal.toFixed(2)}</strong>
+          </div>
+        )}
 
-      {subtotal !== null && subtotal > 0 && (
-        <div style={{
-          padding: '0.75rem 1rem', borderRadius: 'var(--r-md)',
-          background: 'var(--primary-light)',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Total estimado</span>
-          <strong style={{ fontSize: '1.15rem', color: 'var(--primary-dark)' }}>${subtotal.toFixed(2)}</strong>
-        </div>
-      )}
-
-      {result && (
-        <div className={`alert ${result.success ? 'alert-success' : 'alert-error'}`}>
-          {result.success ? `✓ Venta registrada. Total: $${result.total}` : `✕ ${result.error}`}
-        </div>
-      )}
-
-      <button type="submit" disabled={loading} className="btn btn-accent" style={{ width: '100%' }}>
-        {loading ? 'Registrando...' : 'Registrar Venta'}
-      </button>
-    </form>
+        <Button type="submit" disabled={mutation.isPending} className="w-full" variant="secondary">
+          {mutation.isPending && <Loader2 className="animate-spin" />}
+          {mutation.isPending ? 'Registrando...' : 'Registrar Venta'}
+        </Button>
+      </form>
+    </Form>
   );
 }

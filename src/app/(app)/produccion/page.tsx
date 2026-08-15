@@ -2,6 +2,9 @@ import { apiFetch, APIError } from '@/lib/api-client';
 import type { Producto, RegistroProduccion, Venta } from '@/lib/types';
 import ProduccionForm from './ProduccionForm';
 import VentaForm from './VentaForm';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,7 +62,11 @@ export default async function ProduccionPage() {
         </div>
       </div>
 
-      {errorMsg && <div className="alert alert-error" style={{ marginBottom: '1.5rem' }}>{errorMsg}</div>}
+      {errorMsg && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertDescription>{errorMsg}</AlertDescription>
+        </Alert>
+      )}
 
       {/* KPIs */}
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
@@ -83,91 +90,108 @@ export default async function ProduccionPage() {
       {/* Formularios */}
       <div className="grid-2col-equal" style={{ marginBottom: '1.5rem' }}>
 
-        <div className="card">
-          <div className="section-header">
-            <span className="section-title">Registrar producción</span>
-          </div>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-            Descuenta insumos del inventario y suma al stock del producto.
-          </p>
-          {productosParaForms.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No hay productos con receta aún.</p>
-          ) : (
-            <ProduccionForm productos={productosParaForms} />
-          )}
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Registrar producción</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-5 text-sm leading-relaxed text-muted-foreground">
+              Descuenta insumos del inventario y suma al stock del producto.
+            </p>
+            {productosParaForms.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No hay productos con receta aún.</p>
+            ) : (
+              <ProduccionForm productos={productosParaForms} />
+            )}
+          </CardContent>
+        </Card>
 
-        <div className="card">
-          <div className="section-header">
-            <span className="section-title">Registrar venta</span>
-          </div>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-            Descuenta del stock del producto y registra el ingreso.
-          </p>
-          {productosParaForms.filter(p => p.stock > 0).length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No hay productos con stock. Registrá producción primero.</p>
-          ) : (
-            <VentaForm productos={productosParaForms.filter(p => p.stock > 0)} />
-          )}
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Registrar venta</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-5 text-sm leading-relaxed text-muted-foreground">
+              Descuenta del stock del producto y registra el ingreso.
+            </p>
+            {productosParaForms.filter(p => p.stock > 0).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No hay productos con stock. Registrá producción primero.</p>
+            ) : (
+              <VentaForm productos={productosParaForms.filter(p => p.stock > 0)} />
+            )}
+          </CardContent>
+        </Card>
 
       </div>
 
       {/* Historial */}
       <div className="grid-2col-equal">
 
-        <div className="card">
-          <div className="section-header">
-            <span className="section-title">Últimas producciones</span>
-          </div>
-          {historialProduccion.length === 0 ? (
-            <p className="empty-state">Sin registros aún.</p>
-          ) : (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr><th>Producto</th><th>Cant.</th><th className="hide-mobile">Fecha</th></tr>
-                </thead>
-                <tbody>
-                  {historialProduccion.map((reg, i) => (
-                    <tr key={reg.id || i}>
-                      <td style={{ fontWeight: 600 }}>{reg.nombre_producto}</td>
-                      <td>{reg.cantidad}</td>
-                      <td className="hide-mobile" style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>{formatFecha(reg.fecha)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Últimas producciones</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {historialProduccion.length === 0 ? (
+              <p className="py-10 text-center text-muted-foreground">Sin registros aún.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Producto</TableHead>
+                      <TableHead>Cant.</TableHead>
+                      <TableHead className="hidden md:table-cell">Fecha</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {historialProduccion.map((reg, i) => (
+                      <TableRow key={reg.id || i}>
+                        <TableCell className="font-semibold">{reg.nombre_producto}</TableCell>
+                        <TableCell>{reg.cantidad}</TableCell>
+                        <TableCell className="hidden text-xs text-muted-foreground md:table-cell">{formatFecha(reg.fecha)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-        <div className="card">
-          <div className="section-header">
-            <span className="section-title">Últimas ventas</span>
-          </div>
-          {historialVentas.length === 0 ? (
-            <p className="empty-state">Sin registros aún.</p>
-          ) : (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr><th>Producto</th><th>Cant.</th><th>Total</th><th className="hide-mobile">Fecha</th></tr>
-                </thead>
-                <tbody>
-                  {historialVentas.map((vta, i) => (
-                    <tr key={vta.id || i}>
-                      <td style={{ fontWeight: 600 }}>{vta.nombre_producto}</td>
-                      <td>{vta.cantidad}</td>
-                      <td style={{ fontWeight: 700, color: 'var(--primary-dark)' }}>${vta.total.toFixed(2)}</td>
-                      <td className="hide-mobile" style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>{formatFecha(vta.fecha)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Últimas ventas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {historialVentas.length === 0 ? (
+              <p className="py-10 text-center text-muted-foreground">Sin registros aún.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Producto</TableHead>
+                      <TableHead>Cant.</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead className="hidden md:table-cell">Fecha</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {historialVentas.map((vta, i) => (
+                      <TableRow key={vta.id || i}>
+                        <TableCell className="font-semibold">{vta.nombre_producto}</TableCell>
+                        <TableCell>{vta.cantidad}</TableCell>
+                        <TableCell className="font-bold text-primary">${vta.total.toFixed(2)}</TableCell>
+                        <TableCell className="hidden text-xs text-muted-foreground md:table-cell">{formatFecha(vta.fecha)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
       </div>
     </div>
