@@ -5,6 +5,8 @@ import VentaForm from './VentaForm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { KpiTile } from '@/components/KpiTile';
+import { ShoppingCart, Receipt, PackageCheck } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,22 +71,27 @@ export default async function ProduccionPage() {
       )}
 
       {/* KPIs */}
-      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
-        <div className="rounded-xl border bg-card p-5 shadow-sm">
-          <span className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ventas hoy</span>
-          <p className="kpi-value my-1 text-2xl font-extrabold leading-tight tracking-tight" style={{ color: 'var(--primary-dark)' }}>${totalVentasHoy.toFixed(2)}</p>
-          <span className="text-sm font-medium text-muted-foreground">{unidadesHoy} unidades</span>
-        </div>
-        <div className="rounded-xl border bg-card p-5 shadow-sm">
-          <span className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Transacciones hoy</span>
-          <p className="kpi-value my-1 text-2xl font-extrabold leading-tight tracking-tight text-foreground">{ventasHoy.length}</p>
-          <span className="text-sm font-medium text-muted-foreground">registros</span>
-        </div>
-        <div className="rounded-xl border bg-card p-5 shadow-sm">
-          <span className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Con stock</span>
-          <p className="kpi-value my-1 text-2xl font-extrabold leading-tight tracking-tight text-foreground">{productos.filter(p => p.stock_actual > 0).length}</p>
-          <span className="text-sm font-medium text-muted-foreground">productos disponibles</span>
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
+        <KpiTile
+          icon={ShoppingCart}
+          label="Ventas hoy"
+          value={totalVentasHoy}
+          prefix="$"
+          decimals={2}
+          sub={`${unidadesHoy} unidades`}
+        />
+        <KpiTile
+          icon={Receipt}
+          label="Transacciones hoy"
+          value={ventasHoy.length}
+          sub="registros"
+        />
+        <KpiTile
+          icon={PackageCheck}
+          label="Con stock"
+          value={productos.filter(p => p.stock_actual > 0).length}
+          sub="productos disponibles"
+        />
       </div>
 
       {/* Formularios */}

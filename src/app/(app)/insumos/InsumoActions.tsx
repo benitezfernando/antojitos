@@ -157,7 +157,7 @@ export function InsumoRow({ insumo }: { insumo: Insumo }) {
     <TableRow>
       <TableCell className="hidden text-xs text-muted-foreground md:table-cell">{insumo.id}</TableCell>
       <TableCell className="font-medium">{insumo.nombre}</TableCell>
-      <TableCell><Badge variant="secondary">{insumo.unidad_medida}</Badge></TableCell>
+      <TableCell><Badge variant="outline">{insumo.unidad_medida}</Badge></TableCell>
       <TableCell className="hidden md:table-cell">
         <span className="font-semibold">${insumo.costo_unitario.toFixed(2)}</span>
         {insumo.costo_paquete > 0 && (

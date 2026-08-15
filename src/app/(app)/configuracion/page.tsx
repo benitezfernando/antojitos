@@ -46,7 +46,7 @@ export default function AcercaDePage() {
         <Card>
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle>Backend API</CardTitle>
-            <Badge variant="secondary">Railway</Badge>
+            <Badge variant="outline">Railway</Badge>
           </CardHeader>
           <CardContent>
             <dl style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>

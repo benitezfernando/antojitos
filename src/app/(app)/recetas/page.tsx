@@ -62,7 +62,7 @@ export default async function RecetasPage() {
           <h1 className="page-title">Recetas y Productos</h1>
           <p className="page-subtitle">Armá tus recetas y calculá costos y precios de venta</p>
         </div>
-        <Badge variant="secondary" className="shrink-0 text-xs">{productosConCapacidad.length} productos</Badge>
+        <Badge variant="outline" className="shrink-0 text-xs">{productosConCapacidad.length} productos</Badge>
       </div>
 
       {errorMsg && (

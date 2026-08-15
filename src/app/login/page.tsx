@@ -24,9 +24,9 @@ export default async function LoginPage({
       padding: '1rem',
       background: 'var(--bg)',
       backgroundImage: `
-        radial-gradient(ellipse at 20% 10%, rgba(255, 107, 74, 0.12) 0px, transparent 50%),
-        radial-gradient(ellipse at 80% 90%, rgba(107, 58, 38, 0.1) 0px, transparent 50%),
-        radial-gradient(ellipse at 50% 50%, rgba(255, 107, 74, 0.04) 0px, transparent 70%)`,
+        radial-gradient(ellipse at 20% 10%, hsl(82 43% 27% / 0.1) 0px, transparent 50%),
+        radial-gradient(ellipse at 80% 90%, hsl(82 43% 27% / 0.08) 0px, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, hsl(82 43% 27% / 0.04) 0px, transparent 70%)`,
     }}>
       <div style={{ width: '100%', maxWidth: '380px', animation: 'fadeIn 0.4s var(--ease) both' }}>
 
@@ -41,7 +41,7 @@ export default async function LoginPage({
               borderRadius: '20px',
               objectFit: 'cover',
               marginBottom: '1rem',
-              boxShadow: '0 8px 28px rgba(255, 107, 74, 0.25)',
+              boxShadow: '0 8px 28px hsl(82 43% 27% / 0.25)',
             }}
           />
           <h1 style={{

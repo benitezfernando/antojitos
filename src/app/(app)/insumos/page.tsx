@@ -29,7 +29,7 @@ export default async function InsumosPage() {
           <h1 className="page-title">Materias Primas</h1>
           <p className="page-subtitle">Inventario de insumos y costos unitarios</p>
         </div>
-        <Badge variant="secondary" className="shrink-0 text-xs">{insumos.length} insumos</Badge>
+        <Badge variant="outline" className="shrink-0 text-xs">{insumos.length} insumos</Badge>
       </div>
 
       {errorMsg && (

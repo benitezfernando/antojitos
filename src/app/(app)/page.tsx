@@ -1,10 +1,11 @@
 import { apiFetch, APIError } from '@/lib/api-client';
 import type { DashboardKPIs, Insumo } from '@/lib/types';
-import { KpiValue } from '@/components/KpiValue';
+import { KpiTile } from '@/components/KpiTile';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ShoppingCart, Package, TriangleAlert, Banknote } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,59 +50,38 @@ export default async function Home() {
           {/* KPIs */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
 
-            <div className="relative rounded-xl border bg-card p-5 shadow-sm">
-              <div className="absolute top-3.5 right-4 flex size-8 items-center justify-center rounded-full bg-secondary/10 text-secondary">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 1h2l2 6h5l1-4H5"/><circle cx="6" cy="11.5" r="1"/><circle cx="10" cy="11.5" r="1"/>
-                </svg>
-              </div>
-              <span className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ventas hoy</span>
-              <div className="my-1 text-2xl font-extrabold leading-tight tracking-tight text-foreground">
-                <KpiValue value={totalVentasHoy} prefix="$" decimals={2} />
-              </div>
-              <span className="text-sm font-medium text-muted-foreground">{unidadesVendidasHoy} unidades vendidas</span>
-            </div>
+            <KpiTile
+              icon={ShoppingCart}
+              label="Ventas hoy"
+              value={totalVentasHoy}
+              prefix="$"
+              decimals={2}
+              sub={`${unidadesVendidasHoy} unidades vendidas`}
+            />
 
-            <div className="relative rounded-xl border bg-card p-5 shadow-sm">
-              <div className="absolute top-3.5 right-4 flex size-8 items-center justify-center rounded-full bg-secondary/10 text-secondary">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M7 1l1.5 3.5L13 5l-3 3 .7 4.2L7 10.5l-3.7 1.7L4 8 1 5l4.5-.5z"/>
-                </svg>
-              </div>
-              <span className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Productos activos</span>
-              <div className="my-1 text-2xl font-extrabold leading-tight tracking-tight text-foreground">
-                <KpiValue value={productosActivos} />
-              </div>
-              <span className="text-sm font-medium text-muted-foreground">con receta registrada</span>
-            </div>
+            <KpiTile
+              icon={Package}
+              label="Productos activos"
+              value={productosActivos}
+              sub="con receta registrada"
+            />
 
-            <div className="relative rounded-xl border bg-card p-5 shadow-sm">
-              <div className="absolute top-3.5 right-4 flex size-8 items-center justify-center rounded-full bg-secondary/10 text-secondary">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M7 1v12M3 5l4-4 4 4M3 9l4 4 4-4"/>
-                </svg>
-              </div>
-              <span className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Insumos críticos</span>
-              <div className="my-1 text-2xl font-extrabold leading-tight tracking-tight text-foreground">
-                <KpiValue value={insumosCriticosCount} />
-              </div>
-              <span className="text-sm font-medium text-muted-foreground" style={{ color: insumosCriticosCount > 0 ? 'var(--rose)' : undefined }}>
-                {insumosCriticosCount > 0 ? 'requieren reposición' : 'todo en orden'}
-              </span>
-            </div>
+            <KpiTile
+              icon={TriangleAlert}
+              label="Insumos críticos"
+              value={insumosCriticosCount}
+              sub={insumosCriticosCount > 0 ? 'requieren reposición' : 'todo en orden'}
+              tone={insumosCriticosCount > 0 ? 'destructive' : 'success'}
+            />
 
-            <div className="relative rounded-xl border bg-card p-5 shadow-sm">
-              <div className="absolute top-3.5 right-4 flex size-8 items-center justify-center rounded-full bg-secondary/10 text-secondary">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="1" y="4" width="12" height="8" rx="1.5"/><path d="M4 4V3a3 3 0 0 1 6 0v1"/>
-                </svg>
-              </div>
-              <span className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Stock valorizado</span>
-              <div className="my-1 text-2xl font-extrabold leading-tight tracking-tight text-foreground">
-                <KpiValue value={valorizacionStock} prefix="$" decimals={0} />
-              </div>
-              <span className="text-sm font-medium text-muted-foreground">costo directo invertido</span>
-            </div>
+            <KpiTile
+              icon={Banknote}
+              label="Stock valorizado"
+              value={valorizacionStock}
+              prefix="$"
+              decimals={0}
+              sub="costo directo invertido"
+            />
 
           </div>
 
@@ -137,12 +117,11 @@ export default async function Home() {
                     {insumos.slice(0, 8).map((item, idx) => {
                       const isCritical = item.stock_actual <= item.stock_minimo;
                       const isLow = !isCritical && item.stock_actual <= item.stock_minimo * 1.5;
-                      const rowClass   = isCritical ? 'border-l-2 border-l-destructive' : isLow ? 'border-l-2 border-l-warning' : 'border-l-2 border-l-success';
                       const statusLabel = isCritical ? 'Crítico' : isLow ? 'Bajo' : 'OK';
                       return (
-                        <TableRow key={`${item.id}-${idx}`} className={rowClass}>
+                        <TableRow key={`${item.id}-${idx}`}>
                           <TableCell className="font-semibold">{item.nombre}</TableCell>
-                          <TableCell style={{ color: isCritical ? 'var(--rose)' : undefined, fontWeight: isCritical ? 700 : undefined }}>
+                          <TableCell className={isCritical ? 'font-bold text-destructive' : undefined}>
                             {item.stock_actual} {item.unidad_medida}
                           </TableCell>
                           <TableCell className="hidden text-muted-foreground md:table-cell">

@@ -173,8 +173,8 @@ html { font-size: 16px; }
 body {
   background-color: var(--bg);
   background-image:
-    radial-gradient(ellipse at 0% 0%, rgba(255, 107, 74, 0.06) 0px, transparent 55%),
-    radial-gradient(ellipse at 100% 100%, rgba(107, 58, 38, 0.07) 0px, transparent 55%);
+    radial-gradient(ellipse at 0% 0%, hsl(82 43% 27% / 0.06) 0px, transparent 55%),
+    radial-gradient(ellipse at 100% 100%, hsl(82 43% 27% / 0.08) 0px, transparent 55%);
   background-attachment: fixed;
   color: var(--text);
   font-family: var(--font-outfit, 'Outfit'), 'Inter', system-ui, -apple-system, sans-serif;

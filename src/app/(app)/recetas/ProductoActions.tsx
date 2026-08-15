@@ -235,7 +235,7 @@ export function ProductoAcciones({ id, name, categoria, margen, costo, precio, s
   return (
     <TableRow>
       <TableCell className="font-medium">{name}</TableCell>
-      <TableCell className="hidden md:table-cell"><Badge variant="secondary">{categoria}</Badge></TableCell>
+      <TableCell className="hidden md:table-cell"><Badge variant="outline">{categoria}</Badge></TableCell>
       <TableCell className="text-muted-foreground">${costo.toFixed(2)}</TableCell>
       <TableCell className="font-semibold text-primary">${precio.toFixed(2)}</TableCell>
       <TableCell>{stock}</TableCell>

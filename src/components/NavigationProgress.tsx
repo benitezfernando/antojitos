@@ -56,7 +56,7 @@ export default function NavigationProgress() {
           width: '48px',
           height: '48px',
           borderRadius: '50%',
-          border: '4px solid rgba(141,110,99,0.2)',
+          border: '4px solid var(--border-strong)',
           borderTopColor: 'var(--primary)',
           animation: 'nav-spin 0.75s linear infinite',
         }} />
