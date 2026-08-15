@@ -45,4 +45,5 @@ next-env.d.ts
 !package.json
 !package-lock.json
 !tsconfig.json
+!components.json
 CLAUDE.md
