@@ -20,7 +20,7 @@ export const productoSchema = z.object({
   nombre: z.string().trim().min(1, 'El nombre es obligatorio'),
   categoria: z.enum(['Cookies', 'Postres', 'Chocolates', 'Alfajores', 'Tortas', 'Otros']),
   stock: z.coerce.number().min(0, 'No puede ser negativo'),
-  margen_pct: z.coerce.number().min(1, 'Debe ser al menos 1%').max(1000, 'Valor demasiado alto'),
+  margen_pct: z.coerce.number().int('Debe ser un número entero').min(1, 'Debe ser al menos 1%').max(1000, 'Valor demasiado alto'),
   rinde_receta: z.coerce.number().int('Debe ser un número entero').min(1, 'El rinde debe ser al menos 1 unidad'),
   ingredientes: z.array(ingredienteSchema).min(1, 'Agregá al menos un ingrediente'),
 });

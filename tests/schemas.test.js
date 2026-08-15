@@ -24,18 +24,23 @@ test('insumo with zero cant_paquete fails', () => {
 
 function isValidProducto(p) {
   return typeof p.nombre === 'string' && p.nombre.trim().length > 0
+    && Number(p.margen_pct) >= 1 && Number(p.margen_pct) <= 1000 && Number.isInteger(Number(p.margen_pct))
     && Number(p.rinde_receta) >= 1 && Number.isInteger(Number(p.rinde_receta))
     && Array.isArray(p.ingredientes) && p.ingredientes.length >= 1;
 }
 
 test('producto with rinde 0 fails', () => {
-  assert.strictEqual(isValidProducto({ nombre: 'Alfajores', rinde_receta: 0, ingredientes: [{ insumo_id: '1', cantidad: 1, unidad: 'kg' }] }), false);
+  assert.strictEqual(isValidProducto({ nombre: 'Alfajores', margen_pct: 25, rinde_receta: 0, ingredientes: [{ insumo_id: '1', cantidad: 1, unidad: 'kg' }] }), false);
 });
 
 test('producto with no ingredientes fails', () => {
-  assert.strictEqual(isValidProducto({ nombre: 'Alfajores', rinde_receta: 12, ingredientes: [] }), false);
+  assert.strictEqual(isValidProducto({ nombre: 'Alfajores', margen_pct: 25, rinde_receta: 12, ingredientes: [] }), false);
+});
+
+test('producto with non-integer margen_pct fails', () => {
+  assert.strictEqual(isValidProducto({ nombre: 'Alfajores', margen_pct: 15.5, rinde_receta: 12, ingredientes: [{ insumo_id: '1', cantidad: 1, unidad: 'kg' }] }), false);
 });
 
 test('valid producto passes', () => {
-  assert.strictEqual(isValidProducto({ nombre: 'Alfajores', rinde_receta: 12, ingredientes: [{ insumo_id: '1', cantidad: 1, unidad: 'kg' }] }), true);
+  assert.strictEqual(isValidProducto({ nombre: 'Alfajores', margen_pct: 25, rinde_receta: 12, ingredientes: [{ insumo_id: '1', cantidad: 1, unidad: 'kg' }] }), true);
 });
