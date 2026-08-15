@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { logout } from '@/app/auth-actions';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 const navLinks = [
   {
@@ -114,8 +116,13 @@ export default function Sidebar() {
             <Link
               key={link.href}
               href={link.href}
-              className={`nav-item ${pathname === link.href ? 'nav-item-active' : ''}`}
               onClick={close}
+              className={cn(
+                'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors border-l-2 border-transparent',
+                pathname === link.href
+                  ? 'bg-accent text-primary font-semibold border-l-primary'
+                  : 'text-foreground/70 hover:bg-accent hover:text-foreground',
+              )}
             >
               {link.icon}
               {link.label}
@@ -126,19 +133,14 @@ export default function Sidebar() {
         {/* Logout */}
         <div className="nav-divider" />
         <form action={logout}>
-          <button
-            type="submit"
-            className="btn btn-ghost"
-            style={{ width: '100%', justifyContent: 'flex-start', fontSize: '0.85rem', gap: '0.6rem' }}
-            aria-label="Cerrar sesión"
-          >
+          <Button type="submit" variant="ghost" className="w-full justify-start gap-2 text-sm" aria-label="Cerrar sesión">
             <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5.5 1H2a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h3.5" />
               <path d="M10 10l3.5-3.5L10 3" />
               <path d="M13.5 6.5H5.5" />
             </svg>
             Cerrar sesión
-          </button>
+          </Button>
         </form>
 
         {/* Footer */}

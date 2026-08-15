@@ -1,47 +1,26 @@
 'use client';
 
 import { useState } from 'react';
+import { Input } from '@/components/ui/input';
 
 export default function PasswordInput() {
   const [show, setShow] = useState(false);
 
   return (
-    <div style={{ position: 'relative' }}>
-      <input
+    <div className="relative">
+      <Input
         id="login-password"
         name="password"
         type={show ? 'text' : 'password'}
         autoComplete="current-password"
         required
         placeholder="••••••••"
-        style={{
-          width: '100%',
-          padding: '0.85rem 3rem 0.85rem 1rem',
-          borderRadius: '10px',
-          border: '1px solid var(--border)',
-          backgroundColor: 'rgba(255,255,255,0.6)',
-          fontSize: '1rem',
-          outline: 'none',
-          fontFamily: 'inherit',
-          boxSizing: 'border-box',
-        }}
+        className="pr-10"
       />
       <button
         type="button"
         onClick={() => setShow(p => !p)}
-        style={{
-          position: 'absolute',
-          right: '0.75rem',
-          top: '50%',
-          transform: 'translateY(-50%)',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          padding: '0.25rem',
-          color: 'var(--text-muted)',
-          fontSize: '1.1rem',
-          lineHeight: 1,
-        }}
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
         tabIndex={-1}
         aria-label={show ? 'Ocultar contraseña' : 'Ver contraseña'}
       >

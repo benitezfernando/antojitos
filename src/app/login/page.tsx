@@ -1,5 +1,10 @@
 import { login } from '@/app/auth-actions';
 import PasswordInput from './PasswordInput';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default async function LoginPage({
   searchParams,
@@ -56,44 +61,33 @@ export default async function LoginPage({
         </div>
 
         {/* Card */}
-        <div className="glass-panel">
+        <Card className="border-border/60 shadow-lg backdrop-blur">
+          <CardContent className="pt-6">
+            {hasError && (
+              <Alert variant="destructive" className="mb-5">
+                <AlertDescription>Usuario o contraseña incorrectos</AlertDescription>
+              </Alert>
+            )}
 
-          {hasError && (
-            <div className="alert alert-error" style={{ marginBottom: '1.25rem' }}>
-              Usuario o contraseña incorrectos
-            </div>
-          )}
+            <form action={login} className="flex flex-col gap-4">
+              <input type="hidden" name="redirectTo" value={redirectTo} />
 
-          <form action={login} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <input type="hidden" name="redirectTo" value={redirectTo} />
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="login-username">Usuario</Label>
+                <Input id="login-username" name="username" type="text" autoComplete="username" required placeholder="usuario" />
+              </div>
 
-            <div className="form-group">
-              <label htmlFor="login-username" className="label">Usuario</label>
-              <input
-                id="login-username"
-                name="username"
-                type="text"
-                autoComplete="username"
-                required
-                placeholder="usuario"
-                className="input"
-              />
-            </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="login-password">Contraseña</Label>
+                <PasswordInput />
+              </div>
 
-            <div className="form-group">
-              <label htmlFor="login-password" className="label">Contraseña</label>
-              <PasswordInput />
-            </div>
-
-            <button
-              type="submit"
-              className="btn btn-accent"
-              style={{ marginTop: '0.25rem', padding: '0.85rem', fontSize: '1rem', width: '100%' }}
-            >
-              Ingresar
-            </button>
-          </form>
-        </div>
+              <Button type="submit" size="lg" className="mt-1 w-full">
+                Ingresar
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
 
       </div>
     </div>
