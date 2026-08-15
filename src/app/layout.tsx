@@ -4,6 +4,7 @@ import "./globals.css";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 import InstallPrompt from "@/components/InstallPrompt";
 import NavigationProgress from "@/components/NavigationProgress";
+import { Providers } from "./providers";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -52,10 +53,12 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body style={{ fontFamily: "var(--font-outfit, 'Outfit'), system-ui, sans-serif" }}>
-        <NavigationProgress />
-        <ServiceWorkerRegistrar />
-        <InstallPrompt />
-        {children}
+        <Providers>
+          <NavigationProgress />
+          <ServiceWorkerRegistrar />
+          <InstallPrompt />
+          {children}
+        </Providers>
       </body>
     </html>
   );
