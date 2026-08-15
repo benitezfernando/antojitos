@@ -2,6 +2,10 @@ import { apiFetch, APIError } from '@/lib/api-client';
 import type { Insumo } from '@/lib/types';
 import { InsumoRow } from './InsumoActions';
 import AddInsumoForm from './AddInsumoForm';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableHead, TableHeader, TableRow, TableCell } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,51 +29,55 @@ export default async function InsumosPage() {
           <h1 className="page-title">Materias Primas</h1>
           <p className="page-subtitle">Inventario de insumos y costos unitarios</p>
         </div>
-        <span className="badge badge-neutral" style={{ flexShrink: 0, fontSize: '0.8rem' }}>{insumos.length} insumos</span>
+        <Badge variant="secondary" className="shrink-0 text-xs">{insumos.length} insumos</Badge>
       </div>
 
-      {errorMsg && <div className="alert alert-error" style={{ marginBottom: '1.5rem' }}>{errorMsg}</div>}
+      {errorMsg && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertDescription>{errorMsg}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid-2col">
 
         {/* Tabla */}
-        <div className="card">
-          <div className="section-header">
-            <span className="section-title">Inventario actual</span>
-          </div>
-          <div className="table-wrap responsive-cards">
-            <table>
-              <thead>
-                <tr>
-                  <th className="hide-mobile">ID</th>
-                  <th>Nombre</th>
-                  <th>Unidad</th>
-                  <th className="hide-mobile">Costo/kg (recetas)</th>
-                  <th>Stock</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {insumos.map((item, idx) => (
-                  <InsumoRow key={`${item.id}-${idx}`} insumo={item} />
-                ))}
-                {insumos.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="empty-state">No hay insumos registrados.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <Card>
+          <CardHeader className="flex-row items-center justify-between">
+            <CardTitle>Inventario actual</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="hidden md:table-cell">ID</TableHead>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Unidad</TableHead>
+                    <TableHead className="hidden md:table-cell">Costo/kg (recetas)</TableHead>
+                    <TableHead>Stock</TableHead>
+                    <TableHead>Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {insumos.map((item, idx) => (
+                    <InsumoRow key={`${item.id}-${idx}`} insumo={item} />
+                  ))}
+                  {insumos.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">No hay insumos registrados.</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Formulario */}
-        <div className="card" style={{ position: 'sticky', top: '1.5rem' }}>
-          <div className="section-header">
-            <span className="section-title">Agregar insumo</span>
-          </div>
-          <AddInsumoForm />
-        </div>
+        <Card className="sticky top-6">
+          <CardHeader><CardTitle>Agregar insumo</CardTitle></CardHeader>
+          <CardContent><AddInsumoForm /></CardContent>
+        </Card>
 
       </div>
     </div>

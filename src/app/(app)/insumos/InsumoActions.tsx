@@ -1,9 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { apiFetch } from '@/lib/api-client';
-import type { Insumo, UpdateInsumoRequest } from '@/lib/types';
+import { useForm, type Resolver } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader2, Pencil, Trash2 } from 'lucide-react';
+import { insumoSchema, type InsumoFormValues } from '@/lib/schemas';
+import { useApiMutation } from '@/lib/use-api-mutation';
+import type { Insumo } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { TableCell, TableRow } from '@/components/ui/table';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 function factorABase(unidad: string): { factor: number; unidadBase: string } | null {
   switch (unidad) {
@@ -16,178 +29,174 @@ function factorABase(unidad: string): { factor: number; unidadBase: string } | n
 }
 
 export function InsumoRow({ insumo }: { insumo: Insumo }) {
-  const router = useRouter();
   const [editing, setEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [values, setValues] = useState({
-    nombre: insumo.nombre,
-    unidad: insumo.unidad_medida,
-    cantPaquete: insumo.cant_paquete > 0 ? String(insumo.cant_paquete) : '',
-    precioPaquete: insumo.costo_paquete > 0 ? String(insumo.costo_paquete) : '',
-    stock: String(insumo.stock_actual),
-    minStock: String(insumo.stock_minimo),
-  });
-
   const isCritical = insumo.stock_actual <= insumo.stock_minimo;
 
-  const cant = parseFloat(values.cantPaquete.replace(',', '.')) || 0;
-  const precio = parseFloat(values.precioPaquete.replace(',', '.')) || 0;
-  const info = factorABase(values.unidad);
-  const precioBase = info && cant > 0 && precio > 0
-    ? precio / (cant * info.factor)
-    : (cant > 0 && precio > 0 ? precio / cant : null);
+  const form = useForm<InsumoFormValues>({
+    resolver: zodResolver(insumoSchema) as Resolver<InsumoFormValues>,
+    defaultValues: {
+      nombre: insumo.nombre,
+      unidad_paquete: insumo.unidad_medida as InsumoFormValues['unidad_paquete'],
+      cant_paquete: insumo.cant_paquete,
+      costo_paquete: insumo.costo_paquete,
+      stock_actual: insumo.stock_actual,
+      stock_minimo: insumo.stock_minimo,
+    },
+  });
 
-  const handleDelete = async () => {
-    if (!confirm(`¿Eliminar "${insumo.nombre}"? Esta acción no se puede deshacer.`)) return;
-    setLoading(true);
-    setError(null);
-    try {
-      await apiFetch(`/insumos/${insumo.id}`, { method: 'DELETE' });
-      router.refresh();
-    } catch (err: any) {
-      setError(err.message ?? 'Error al eliminar');
-      setLoading(false);
-    }
-  };
+  const saveMutation = useApiMutation<InsumoFormValues, Insumo>({
+    path: `/insumos/${insumo.id}`,
+    method: 'PUT',
+    successMessage: 'Insumo actualizado correctamente.',
+    onSuccess: () => setEditing(false),
+  });
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    const body: UpdateInsumoRequest = {
-      nombre: values.nombre,
-      unidad_paquete: values.unidad,
-      costo_paquete: precio,
-      cant_paquete: cant,
-      stock_actual: parseFloat(values.stock) || 0,
-      stock_minimo: parseFloat(values.minStock) || 0,
-    };
-    try {
-      await apiFetch<Insumo>(`/insumos/${insumo.id}`, { method: 'PUT', body: JSON.stringify(body) });
-      setEditing(false);
-      router.refresh();
-    } catch (err: any) {
-      setError(err.message ?? 'Error al guardar');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const deleteMutation = useApiMutation<void, void>({
+    path: `/insumos/${insumo.id}`,
+    method: 'DELETE',
+    successMessage: `"${insumo.nombre}" eliminado.`,
+  });
+
+  const unidad = form.watch('unidad_paquete');
+  const cant = form.watch('cant_paquete');
+  const precio = form.watch('costo_paquete');
+  const info = factorABase(unidad);
+  const precioBase = info && cant > 0 && precio > 0 ? precio / (cant * info.factor) : null;
 
   if (editing) {
     return (
-      <tr style={{ background: 'var(--primary-light)' }}>
-        <td colSpan={6} style={{ padding: '1.25rem 1rem' }}>
-          <form onSubmit={handleSave}>
-            <div className="grid-2col-equal" style={{ gap: '0.65rem', marginBottom: '0.65rem' }}>
-              <div className="form-group">
-                <label className="label">Nombre</label>
-                <input className="input" value={values.nombre}
-                  onChange={e => setValues(v => ({ ...v, nombre: e.target.value }))} />
+      <TableRow>
+        <TableCell colSpan={6} className="bg-accent/40 p-5">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(values => saveMutation.mutate(values))} className="flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                <FormField control={form.control} name="nombre" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nombre</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="unidad_paquete" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Unidad</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="kg">kg</SelectItem>
+                        <SelectItem value="g">g</SelectItem>
+                        <SelectItem value="lt">lt</SelectItem>
+                        <SelectItem value="ml">ml</SelectItem>
+                        <SelectItem value="u">u</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
               </div>
-              <div className="form-group">
-                <label className="label">Unidad</label>
-                <select className="input" value={values.unidad}
-                  onChange={e => setValues(v => ({ ...v, unidad: e.target.value }))}>
-                  <option value="kg">kg</option>
-                  <option value="g">g</option>
-                  <option value="lt">lt</option>
-                  <option value="ml">ml</option>
-                  <option value="u">u</option>
-                </select>
-              </div>
-            </div>
 
-            <div className="grid-2col-equal" style={{ gap: '0.65rem', marginBottom: '0.65rem' }}>
-              <div className="form-group">
-                <label className="label">Cant. paquete ({values.unidad})</label>
-                <input className="input" type="number" step="0.001" placeholder="Ej. 200"
-                  value={values.cantPaquete}
-                  onChange={e => setValues(v => ({ ...v, cantPaquete: e.target.value }))} />
+              <div className="grid grid-cols-2 gap-3">
+                <FormField control={form.control} name="cant_paquete" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cant. paquete ({unidad})</FormLabel>
+                    <FormControl><Input type="number" step="0.001" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="costo_paquete" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Precio paquete ($)</FormLabel>
+                    <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
               </div>
-              <div className="form-group">
-                <label className="label">Precio paquete ($)</label>
-                <input className="input" type="number" step="0.01" placeholder="Ej. 4600"
-                  value={values.precioPaquete}
-                  onChange={e => setValues(v => ({ ...v, precioPaquete: e.target.value }))} />
-              </div>
-            </div>
 
-            {cant > 0 && precio > 0 && (
-              <div style={{
-                padding: '0.5rem 0.75rem', borderRadius: 'var(--r-md)', marginBottom: '0.65rem',
-                background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '0.85rem',
-              }}>
-                Precio por <strong>{info?.unidadBase ?? 'unidad'}</strong>:{' '}
-                <strong style={{ color: 'var(--primary-dark)' }}>${(precioBase ?? 0).toFixed(2)}</strong>
-                <span style={{ color: 'var(--text-subtle)', marginLeft: '0.4rem' }}>(usado en recetas)</span>
-              </div>
-            )}
+              {precioBase !== null && (
+                <div className="rounded-md border bg-background px-3 py-2 text-sm">
+                  Precio por <strong>{info!.unidadBase}</strong>:{' '}
+                  <strong className="text-primary">${precioBase.toFixed(2)}</strong>
+                  <span className="ml-2 text-muted-foreground">(usado en recetas)</span>
+                </div>
+              )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '0.65rem', marginBottom: '1rem' }}>
-              <div className="form-group">
-                <label className="label">Stock actual</label>
-                <input className="input" type="number" step="0.001" value={values.stock}
-                  onChange={e => setValues(v => ({ ...v, stock: e.target.value }))} />
+              <div className="grid grid-cols-2 gap-3">
+                <FormField control={form.control} name="stock_actual" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Stock actual</FormLabel>
+                    <FormControl><Input type="number" step="0.001" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="stock_minimo" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Stock mínimo</FormLabel>
+                    <FormControl><Input type="number" step="0.001" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
               </div>
-              <div className="form-group">
-                <label className="label">Stock mínimo</label>
-                <input className="input" type="number" step="0.001" value={values.minStock}
-                  onChange={e => setValues(v => ({ ...v, minStock: e.target.value }))} />
-              </div>
-            </div>
 
-            {error && <div className="alert alert-error" style={{ marginBottom: '0.75rem' }}>{error}</div>}
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="submit" disabled={loading} className="btn btn-primary" style={{ flex: 1 }}>
-                {loading ? 'Guardando...' : '✓ Guardar'}
-              </button>
-              <button type="button" onClick={() => setEditing(false)} className="btn btn-ghost" style={{ flex: 1 }}>
-                Cancelar
-              </button>
-            </div>
-          </form>
-        </td>
-      </tr>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={saveMutation.isPending} className="flex-1">
+                  {saveMutation.isPending && <Loader2 className="animate-spin" />}
+                  {saveMutation.isPending ? 'Guardando...' : 'Guardar'}
+                </Button>
+                <Button type="button" variant="ghost" className="flex-1" onClick={() => setEditing(false)}>
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </TableCell>
+      </TableRow>
     );
   }
 
   return (
-    <tr>
-      <td className="hide-mobile" style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>{insumo.id}</td>
-      <td style={{ fontWeight: 600 }}>{insumo.nombre}</td>
-      <td><span className="badge badge-neutral">{insumo.unidad_medida}</span></td>
-      <td className="hide-mobile">
-        <span style={{ fontWeight: 600 }}>${insumo.costo_unitario.toFixed(2)}</span>
+    <TableRow>
+      <TableCell className="hidden text-xs text-muted-foreground md:table-cell">{insumo.id}</TableCell>
+      <TableCell className="font-medium">{insumo.nombre}</TableCell>
+      <TableCell><Badge variant="secondary">{insumo.unidad_medida}</Badge></TableCell>
+      <TableCell className="hidden md:table-cell">
+        <span className="font-semibold">${insumo.costo_unitario.toFixed(2)}</span>
         {insumo.costo_paquete > 0 && (
-          <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
+          <span className="block text-xs text-muted-foreground">
             paq: ${insumo.costo_paquete.toFixed(0)} / {insumo.cant_paquete}{insumo.unidad_medida}
           </span>
         )}
-      </td>
-      <td>
-        <span style={{ color: isCritical ? 'var(--danger)' : undefined, fontWeight: isCritical ? 700 : undefined }}>
+      </TableCell>
+      <TableCell>
+        <span className={isCritical ? 'font-bold text-destructive' : ''}>
           {isCritical && '⚠ '}{insumo.stock_actual} {insumo.unidad_medida}
         </span>
-      </td>
-      <td>
-        <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-          <button
-            onClick={() => { setEditing(true); setError(null); }}
-            className="btn btn-ghost"
-            style={{ padding: '0.35rem 0.65rem', fontSize: '0.85rem' }}
-            title="Editar"
-          >✏️</button>
-          <button
-            onClick={handleDelete}
-            disabled={loading}
-            className="btn"
-            style={{ padding: '0.35rem 0.65rem', fontSize: '0.85rem', color: 'var(--danger)', background: 'transparent', border: '1px solid transparent' }}
-            title="Eliminar"
-          >🗑</button>
-          {error && <span style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>{error}</span>}
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={() => setEditing(true)} title="Editar">
+            <Pencil className="size-4" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger
+              render={
+                <Button variant="ghost" size="icon" disabled={deleteMutation.isPending} title="Eliminar" className="text-destructive hover:text-destructive" />
+              }
+            >
+              {deleteMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Eliminar &quot;{insumo.nombre}&quot;?</AlertDialogTitle>
+                <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={() => deleteMutation.mutate()}>Eliminar</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
