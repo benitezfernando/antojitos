@@ -522,9 +522,6 @@ hr.divider {
   .page-subtitle { font-size: 0.85rem; }
 
   .kpi-value { font-size: 1.65rem; }
-  .kpi-card  { padding: 1rem 1.1rem; }
-
-  .card, .glass-panel { border-radius: var(--r-lg); padding: 1rem; }
 
   .grid-2col,
   .grid-2col-equal,
@@ -593,8 +590,6 @@ hr.divider {
   tbody td { padding: 0.65rem; }
 
   .section-header { margin-bottom: 1rem; padding-bottom: 0.75rem; }
-
-  form .btn { font-size: 0.9rem; }
 
   /* Anti-zoom iOS */
   .input { font-size: 1rem; }
