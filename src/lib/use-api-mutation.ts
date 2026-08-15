@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { apiFetch, APIError } from './api-client';
 
@@ -13,6 +14,7 @@ export function useApiMutation<TInput = unknown, TOutput = unknown>(
   options: UseApiMutationOptions<TInput, TOutput>,
 ): UseMutationResult<TOutput, APIError, TInput> {
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   return useMutation<TOutput, APIError, TInput>({
     mutationFn: async (input: TInput) => {
@@ -29,6 +31,7 @@ export function useApiMutation<TInput = unknown, TOutput = unknown>(
         : options.successMessage;
       toast.success(message);
       queryClient.invalidateQueries();
+      router.refresh();
       options.onSuccess?.(data, input);
     },
     onError: (error) => {

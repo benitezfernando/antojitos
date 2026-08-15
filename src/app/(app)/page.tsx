@@ -4,6 +4,7 @@ import { KpiValue } from '@/components/KpiValue';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,50 +49,58 @@ export default async function Home() {
           {/* KPIs */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
 
-            <div className="rounded-xl border bg-card p-5 shadow-sm">
-              <div className="kpi-icon">
+            <div className="relative rounded-xl border bg-card p-5 shadow-sm">
+              <div className="absolute top-3.5 right-4 flex size-8 items-center justify-center rounded-full bg-secondary/10 text-secondary">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M1 1h2l2 6h5l1-4H5"/><circle cx="6" cy="11.5" r="1"/><circle cx="10" cy="11.5" r="1"/>
                 </svg>
               </div>
-              <span className="kpi-label">Ventas hoy</span>
-              <KpiValue value={totalVentasHoy} prefix="$" decimals={2} />
-              <span className="kpi-sub">{unidadesVendidasHoy} unidades vendidas</span>
+              <span className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ventas hoy</span>
+              <div className="my-1 text-2xl font-extrabold leading-tight tracking-tight text-foreground">
+                <KpiValue value={totalVentasHoy} prefix="$" decimals={2} />
+              </div>
+              <span className="text-sm font-medium text-muted-foreground">{unidadesVendidasHoy} unidades vendidas</span>
             </div>
 
-            <div className="rounded-xl border bg-card p-5 shadow-sm">
-              <div className="kpi-icon">
+            <div className="relative rounded-xl border bg-card p-5 shadow-sm">
+              <div className="absolute top-3.5 right-4 flex size-8 items-center justify-center rounded-full bg-secondary/10 text-secondary">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M7 1l1.5 3.5L13 5l-3 3 .7 4.2L7 10.5l-3.7 1.7L4 8 1 5l4.5-.5z"/>
                 </svg>
               </div>
-              <span className="kpi-label">Productos activos</span>
-              <KpiValue value={productosActivos} />
-              <span className="kpi-sub">con receta registrada</span>
+              <span className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Productos activos</span>
+              <div className="my-1 text-2xl font-extrabold leading-tight tracking-tight text-foreground">
+                <KpiValue value={productosActivos} />
+              </div>
+              <span className="text-sm font-medium text-muted-foreground">con receta registrada</span>
             </div>
 
-            <div className="rounded-xl border bg-card p-5 shadow-sm">
-              <div className="kpi-icon">
+            <div className="relative rounded-xl border bg-card p-5 shadow-sm">
+              <div className="absolute top-3.5 right-4 flex size-8 items-center justify-center rounded-full bg-secondary/10 text-secondary">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M7 1v12M3 5l4-4 4 4M3 9l4 4 4-4"/>
                 </svg>
               </div>
-              <span className="kpi-label">Insumos críticos</span>
-              <KpiValue value={insumosCriticosCount} />
-              <span className="kpi-sub" style={{ color: insumosCriticosCount > 0 ? 'var(--rose)' : undefined }}>
+              <span className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Insumos críticos</span>
+              <div className="my-1 text-2xl font-extrabold leading-tight tracking-tight text-foreground">
+                <KpiValue value={insumosCriticosCount} />
+              </div>
+              <span className="text-sm font-medium text-muted-foreground" style={{ color: insumosCriticosCount > 0 ? 'var(--rose)' : undefined }}>
                 {insumosCriticosCount > 0 ? 'requieren reposición' : 'todo en orden'}
               </span>
             </div>
 
-            <div className="rounded-xl border bg-card p-5 shadow-sm">
-              <div className="kpi-icon">
+            <div className="relative rounded-xl border bg-card p-5 shadow-sm">
+              <div className="absolute top-3.5 right-4 flex size-8 items-center justify-center rounded-full bg-secondary/10 text-secondary">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="1" y="4" width="12" height="8" rx="1.5"/><path d="M4 4V3a3 3 0 0 1 6 0v1"/>
                 </svg>
               </div>
-              <span className="kpi-label">Stock valorizado</span>
-              <KpiValue value={valorizacionStock} prefix="$" decimals={0} />
-              <span className="kpi-sub">costo directo invertido</span>
+              <span className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Stock valorizado</span>
+              <div className="my-1 text-2xl font-extrabold leading-tight tracking-tight text-foreground">
+                <KpiValue value={valorizacionStock} prefix="$" decimals={0} />
+              </div>
+              <span className="text-sm font-medium text-muted-foreground">costo directo invertido</span>
             </div>
 
           </div>
@@ -114,32 +123,32 @@ export default async function Home() {
                 <p>No hay insumos registrados.</p>
               </div>
             ) : (
-              <div className="table-wrap responsive-cards">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Insumo</th>
-                      <th>Stock actual</th>
-                      <th className="hide-mobile">Mínimo</th>
-                      <th>Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Insumo</TableHead>
+                      <TableHead>Stock actual</TableHead>
+                      <TableHead className="hidden md:table-cell">Mínimo</TableHead>
+                      <TableHead>Estado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {insumos.slice(0, 8).map((item, idx) => {
                       const isCritical = item.stock_actual <= item.stock_minimo;
                       const isLow = !isCritical && item.stock_actual <= item.stock_minimo * 1.5;
-                      const rowClass   = isCritical ? 'row-danger' : isLow ? 'row-warning' : 'row-ok';
+                      const rowClass   = isCritical ? 'border-l-2 border-l-destructive' : isLow ? 'border-l-2 border-l-warning' : 'border-l-2 border-l-success';
                       const statusLabel = isCritical ? 'Crítico' : isLow ? 'Bajo' : 'OK';
                       return (
-                        <tr key={`${item.id}-${idx}`} className={rowClass}>
-                          <td data-label="Insumo" style={{ fontWeight: 600 }}>{item.nombre}</td>
-                          <td data-label="Stock" style={{ color: isCritical ? 'var(--rose)' : undefined, fontWeight: isCritical ? 700 : undefined }}>
+                        <TableRow key={`${item.id}-${idx}`} className={rowClass}>
+                          <TableCell className="font-semibold">{item.nombre}</TableCell>
+                          <TableCell style={{ color: isCritical ? 'var(--rose)' : undefined, fontWeight: isCritical ? 700 : undefined }}>
                             {item.stock_actual} {item.unidad_medida}
-                          </td>
-                          <td data-label="Mínimo" className="hide-mobile" style={{ color: 'var(--text-muted)' }}>
+                          </TableCell>
+                          <TableCell className="hidden text-muted-foreground md:table-cell">
                             {item.stock_minimo} {item.unidad_medida}
-                          </td>
-                          <td data-label="Estado">
+                          </TableCell>
+                          <TableCell>
                             {isCritical ? (
                               <Badge variant="destructive">{statusLabel}</Badge>
                             ) : isLow ? (
@@ -147,12 +156,12 @@ export default async function Home() {
                             ) : (
                               <Badge variant="outline" className="border-success text-success">{statusLabel}</Badge>
                             )}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       );
                     })}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             )}
             </CardContent>

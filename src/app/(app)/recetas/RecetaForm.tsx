@@ -3,6 +3,7 @@
 import { useForm, useFieldArray, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Plus, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { productoSchema, type ProductoFormValues } from '@/lib/schemas';
 import { useApiMutation } from '@/lib/use-api-mutation';
 import type { Producto } from '@/lib/types';
@@ -56,7 +57,7 @@ export default function RecetaForm({ insumos }: { insumos: Insumo[] }) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(values => mutation.mutate(values))} className="flex flex-col gap-4">
+      <form onSubmit={form.handleSubmit(values => mutation.mutate(values), () => toast.error('Revisá los campos marcados'))} className="flex flex-col gap-4">
         <FormField control={form.control} name="nombre" render={({ field }) => (
           <FormItem>
             <FormLabel>Nombre del producto</FormLabel>
@@ -112,20 +113,26 @@ export default function RecetaForm({ insumos }: { insumos: Insumo[] }) {
             {fields.map((f, idx) => (
               <div key={f.id} className="flex flex-col gap-2 rounded-lg border bg-accent/30 p-2">
                 <FormField control={form.control} name={`ingredientes.${idx}.insumo_id`} render={({ field }) => (
-                  <Select onValueChange={(val) => {
-                    field.onChange(val);
-                    const ins = insumos.find(i => i.id === val);
-                    if (ins) form.setValue(`ingredientes.${idx}.unidad`, ins.unit as ProductoFormValues['ingredientes'][number]['unidad']);
-                  }} value={field.value}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {insumos.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <FormItem>
+                    <Select onValueChange={(val) => {
+                      field.onChange(val);
+                      const ins = insumos.find(i => i.id === val);
+                      if (ins) form.setValue(`ingredientes.${idx}.unidad`, ins.unit as ProductoFormValues['ingredientes'][number]['unidad']);
+                    }} value={field.value}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        {insumos.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
                 )} />
                 <div className="flex items-center gap-2">
                   <FormField control={form.control} name={`ingredientes.${idx}.cantidad`} render={({ field }) => (
-                    <FormControl><Input type="number" step="0.001" placeholder="Cantidad" className="flex-[2]" {...field} /></FormControl>
+                    <FormItem className="flex-[2]">
+                      <FormControl><Input type="number" step="0.001" placeholder="Cantidad" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )} />
                   <FormField control={form.control} name={`ingredientes.${idx}.unidad`} render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value}>

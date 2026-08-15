@@ -71,19 +71,19 @@ export default async function ProduccionPage() {
       {/* KPIs */}
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
         <div className="rounded-xl border bg-card p-5 shadow-sm">
-          <span className="kpi-label">Ventas hoy</span>
-          <p className="kpi-value" style={{ color: 'var(--primary-dark)' }}>${totalVentasHoy.toFixed(2)}</p>
-          <span className="kpi-sub">{unidadesHoy} unidades</span>
+          <span className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ventas hoy</span>
+          <p className="kpi-value my-1 text-2xl font-extrabold leading-tight tracking-tight" style={{ color: 'var(--primary-dark)' }}>${totalVentasHoy.toFixed(2)}</p>
+          <span className="text-sm font-medium text-muted-foreground">{unidadesHoy} unidades</span>
         </div>
         <div className="rounded-xl border bg-card p-5 shadow-sm">
-          <span className="kpi-label">Transacciones hoy</span>
-          <p className="kpi-value">{ventasHoy.length}</p>
-          <span className="kpi-sub">registros</span>
+          <span className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Transacciones hoy</span>
+          <p className="kpi-value my-1 text-2xl font-extrabold leading-tight tracking-tight text-foreground">{ventasHoy.length}</p>
+          <span className="text-sm font-medium text-muted-foreground">registros</span>
         </div>
         <div className="rounded-xl border bg-card p-5 shadow-sm">
-          <span className="kpi-label">Con stock</span>
-          <p className="kpi-value">{productos.filter(p => p.stock_actual > 0).length}</p>
-          <span className="kpi-sub">productos disponibles</span>
+          <span className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Con stock</span>
+          <p className="kpi-value my-1 text-2xl font-extrabold leading-tight tracking-tight text-foreground">{productos.filter(p => p.stock_actual > 0).length}</p>
+          <span className="text-sm font-medium text-muted-foreground">productos disponibles</span>
         </div>
       </div>
 

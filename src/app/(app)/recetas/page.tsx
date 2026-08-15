@@ -98,7 +98,7 @@ export default async function RecetasPage() {
                   <TableBody>
                     {productosConCapacidad.map((prod, idx) => {
                       const cap = prod.capacidad;
-                      const capColor = cap === 0 ? 'var(--danger)' : cap !== null && cap <= 5 ? 'var(--warning)' : 'var(--success)';
+                      const capColor = cap === 0 ? 'var(--destructive)' : cap !== null && cap <= 5 ? 'var(--warning)' : 'var(--success)';
                       return (
                         <ProductoAcciones
                           key={`${prod.id}-${idx}`}
