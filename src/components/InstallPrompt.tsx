@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -66,13 +67,9 @@ export default function InstallPrompt() {
         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>Agregá la app a tu pantalla de inicio</p>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flexShrink: 0 }}>
-        <button
-          onClick={handleInstall}
-          className="btn btn-primary"
-          style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
-        >
+        <Button onClick={handleInstall} size="sm">
           Instalar
-        </button>
+        </Button>
         <button
           onClick={handleDismiss}
           style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}

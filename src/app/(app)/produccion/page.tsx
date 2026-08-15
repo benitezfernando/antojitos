@@ -70,17 +70,17 @@ export default async function ProduccionPage() {
 
       {/* KPIs */}
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
-        <div className="kpi-card">
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
           <span className="kpi-label">Ventas hoy</span>
           <p className="kpi-value" style={{ color: 'var(--primary-dark)' }}>${totalVentasHoy.toFixed(2)}</p>
           <span className="kpi-sub">{unidadesHoy} unidades</span>
         </div>
-        <div className="kpi-card">
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
           <span className="kpi-label">Transacciones hoy</span>
           <p className="kpi-value">{ventasHoy.length}</p>
           <span className="kpi-sub">registros</span>
         </div>
-        <div className="kpi-card">
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
           <span className="kpi-label">Con stock</span>
           <p className="kpi-value">{productos.filter(p => p.stock_actual > 0).length}</p>
           <span className="kpi-sub">productos disponibles</span>

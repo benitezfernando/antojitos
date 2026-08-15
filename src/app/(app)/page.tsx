@@ -1,6 +1,9 @@
 import { apiFetch, APIError } from '@/lib/api-client';
 import type { DashboardKPIs, Insumo } from '@/lib/types';
 import { KpiValue } from '@/components/KpiValue';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,13 +40,15 @@ export default async function Home() {
       </div>
 
       {errorMsg ? (
-        <div className="alert alert-error">{errorMsg}</div>
+        <Alert variant="destructive">
+          <AlertDescription>{errorMsg}</AlertDescription>
+        </Alert>
       ) : (
         <>
           {/* KPIs */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
 
-            <div className="kpi-card">
+            <div className="rounded-xl border bg-card p-5 shadow-sm">
               <div className="kpi-icon">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M1 1h2l2 6h5l1-4H5"/><circle cx="6" cy="11.5" r="1"/><circle cx="10" cy="11.5" r="1"/>
@@ -54,7 +59,7 @@ export default async function Home() {
               <span className="kpi-sub">{unidadesVendidasHoy} unidades vendidas</span>
             </div>
 
-            <div className="kpi-card">
+            <div className="rounded-xl border bg-card p-5 shadow-sm">
               <div className="kpi-icon">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M7 1l1.5 3.5L13 5l-3 3 .7 4.2L7 10.5l-3.7 1.7L4 8 1 5l4.5-.5z"/>
@@ -65,7 +70,7 @@ export default async function Home() {
               <span className="kpi-sub">con receta registrada</span>
             </div>
 
-            <div className="kpi-card">
+            <div className="rounded-xl border bg-card p-5 shadow-sm">
               <div className="kpi-icon">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M7 1v12M3 5l4-4 4 4M3 9l4 4 4-4"/>
@@ -78,7 +83,7 @@ export default async function Home() {
               </span>
             </div>
 
-            <div className="kpi-card">
+            <div className="rounded-xl border bg-card p-5 shadow-sm">
               <div className="kpi-icon">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="1" y="4" width="12" height="8" rx="1.5"/><path d="M4 4V3a3 3 0 0 1 6 0v1"/>
@@ -92,14 +97,14 @@ export default async function Home() {
           </div>
 
           {/* Alertas de insumos */}
-          <div className="card">
-            <div className="section-header">
-              <span className="section-title">Alertas de stock</span>
+          <Card>
+            <CardHeader className="flex-row items-center justify-between">
+              <CardTitle>Alertas de stock</CardTitle>
               {insumosCriticosCount > 0 && (
-                <span className="badge badge-danger">{insumosCriticosCount} críticos</span>
+                <Badge variant="destructive">{insumosCriticosCount} críticos</Badge>
               )}
-            </div>
-
+            </CardHeader>
+            <CardContent>
             {insumos.length === 0 ? (
               <div className="empty-state">
                 <svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -124,7 +129,6 @@ export default async function Home() {
                       const isCritical = item.stock_actual <= item.stock_minimo;
                       const isLow = !isCritical && item.stock_actual <= item.stock_minimo * 1.5;
                       const rowClass   = isCritical ? 'row-danger' : isLow ? 'row-warning' : 'row-ok';
-                      const badgeClass = isCritical ? 'badge-danger' : isLow ? 'badge-warning' : 'badge-ok';
                       const statusLabel = isCritical ? 'Crítico' : isLow ? 'Bajo' : 'OK';
                       return (
                         <tr key={`${item.id}-${idx}`} className={rowClass}>
@@ -135,7 +139,15 @@ export default async function Home() {
                           <td data-label="Mínimo" className="hide-mobile" style={{ color: 'var(--text-muted)' }}>
                             {item.stock_minimo} {item.unidad_medida}
                           </td>
-                          <td data-label="Estado"><span className={`badge ${badgeClass}`}>{statusLabel}</span></td>
+                          <td data-label="Estado">
+                            {isCritical ? (
+                              <Badge variant="destructive">{statusLabel}</Badge>
+                            ) : isLow ? (
+                              <Badge variant="outline" className="border-warning text-warning">{statusLabel}</Badge>
+                            ) : (
+                              <Badge variant="outline" className="border-success text-success">{statusLabel}</Badge>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
@@ -143,7 +155,8 @@ export default async function Home() {
                 </table>
               </div>
             )}
-          </div>
+            </CardContent>
+          </Card>
         </>
       )}
     </div>

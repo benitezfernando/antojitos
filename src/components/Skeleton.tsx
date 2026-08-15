@@ -1,3 +1,5 @@
+import { Skeleton as ShadcnSkeleton } from '@/components/ui/skeleton';
+
 interface SkeletonProps {
   width?: string;
   height?: string;
@@ -7,20 +9,19 @@ interface SkeletonProps {
 
 export function Skeleton({ width = '100%', height = '1em', className = '', circle = false }: SkeletonProps) {
   return (
-    <span
-      className={`skeleton ${circle ? 'skeleton-circle' : 'skeleton-text'} ${className}`}
+    <ShadcnSkeleton
+      className={`${circle ? 'rounded-full' : 'rounded-sm'} ${className}`}
       style={{ display: 'block', width, height }}
-      aria-hidden="true"
     />
   );
 }
 
 export function SkeletonKPICard() {
   return (
-    <div className="kpi-card">
+    <div className="rounded-xl border bg-card p-5 shadow-sm">
       <Skeleton width="60%" height="0.7em" />
-      <Skeleton width="55%" height="2rem" />
-      <Skeleton width="75%" height="0.75em" />
+      <Skeleton width="55%" height="2rem" className="mt-2" />
+      <Skeleton width="75%" height="0.75em" className="mt-2" />
     </div>
   );
 }
@@ -31,7 +32,7 @@ export function SkeletonTableRows({ rows = 5, cols = 4 }: { rows?: number; cols?
       {Array.from({ length: rows }).map((_, i) => (
         <tr key={i}>
           {Array.from({ length: cols }).map((_, j) => (
-            <td key={j} style={{ padding: '0.85rem 1rem' }}>
+            <td key={j} className="p-3">
               <Skeleton width={j === 0 ? '80%' : '60%'} height="0.85em" />
             </td>
           ))}
