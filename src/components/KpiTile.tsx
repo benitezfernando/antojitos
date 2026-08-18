@@ -36,7 +36,7 @@ interface KpiTileProps {
  */
 export function KpiTile({ icon: Icon, label, value, prefix, decimals = 0, sub, tone = 'neutral' }: KpiTileProps) {
   return (
-    <div className="relative rounded-xl border bg-card p-5 shadow-sm">
+    <div data-slot="card" className="relative rounded-xl p-5">
       <div className={cn('absolute top-3.5 right-4 flex size-8 items-center justify-center rounded-full', TONE_ICON_CLASS[tone])}>
         <Icon className="size-3.5" />
       </div>

@@ -46,7 +46,7 @@
   --muted:                  hsl(30 15% 93%);  /* neutral hover-adjacent tone, derived from --accent's hue */
   --muted-foreground:       hsl(30 8% 40%);
 
-  --radius: 0.75rem;
+  --radius: 0.9rem;
 
   /* Non-shadcn layout tokens, kept until Task 12 cleanup confirms nothing else needs them */
   --sidebar-w:      256px;
@@ -84,11 +84,15 @@
   --r-sm: 0.5rem;
   --r-md: var(--radius);
   --r-lg: 1rem;
-  --r-xl: 1.25rem;
+  --r-xl: 1.5rem;
 
   --mint: var(--success);
   --gold: var(--warning);
   --rose: var(--destructive);
+
+  /* Soft Depth (glass) — card surface tokens */
+  --glass-card-bg:     oklch(1 0 0 / 0.55);
+  --glass-card-border: oklch(1 0 0 / 0.6);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -157,11 +161,14 @@
     --r-sm: 0.5rem;
     --r-md: var(--radius);
     --r-lg: 1rem;
-    --r-xl: 1.25rem;
+    --r-xl: 1.5rem;
 
     --mint: var(--success);
     --gold: var(--warning);
     --rose: var(--destructive);
+
+    --glass-card-bg:     oklch(0.2 0.015 60 / 0.55);
+    --glass-card-border: oklch(1 0 0 / 0.08);
   }
 }
 
@@ -178,8 +185,8 @@
   body {
     background-color: var(--bg);
     background-image:
-      radial-gradient(ellipse at 0% 0%, hsl(82 43% 27% / 0.06) 0px, transparent 55%),
-      radial-gradient(ellipse at 100% 100%, hsl(82 43% 27% / 0.08) 0px, transparent 55%);
+      radial-gradient(ellipse at 0% 0%, hsl(82 43% 27% / 0.09) 0px, transparent 55%),
+      radial-gradient(ellipse at 100% 100%, hsl(16 100% 65% / 0.1) 0px, transparent 55%);
     background-attachment: fixed;
     color: var(--text);
     font-family: var(--font-outfit, 'Outfit'), 'Inter', system-ui, -apple-system, sans-serif;
@@ -208,10 +215,33 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Glass card (shadcn Card + KpiTile, via [data-slot="card"]) ── */
+[data-slot="card"] {
+  position: relative;
+  background: var(--glass-card-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-card-border);
+  box-shadow: var(--shadow-md);
+}
+
+[data-slot="card"]::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 1.25rem; right: 1.25rem;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  opacity: 0.55;
+  pointer-events: none;
+}
+
 /* ── Layout shell ── */
 .app-container {
   display: flex;
   min-height: 100dvh;
+  gap: 1.25rem;
+  padding: 1.5rem;
 }
 
 .main-content {
@@ -222,7 +252,7 @@
 
 /* ── Page wrapper ── */
 .page {
-  padding: 2rem;
+  padding: 0.5rem 0.5rem 2rem;
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
@@ -234,15 +264,17 @@
   background: var(--surface);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-right: 1.5px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
   padding: 1.5rem 1rem;
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  height: calc(100dvh - 3rem);
   position: sticky;
-  top: 0;
+  top: 1.5rem;
   flex-shrink: 0;
   z-index: 100;
+  box-shadow: var(--shadow-md);
   transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease);
 }
 
@@ -474,7 +506,7 @@ hr.divider {
    ======================================================= */
 @media (max-width: 768px) {
 
-  .app-container { flex-direction: column; }
+  .app-container { flex-direction: column; padding: 0; gap: 0; }
 
   .mobile-topbar {
     display: flex;
@@ -502,6 +534,8 @@ hr.divider {
     top: 0; left: 0;
     height: 100dvh;
     width: min(80vw, 280px);
+    border-radius: 0 var(--r-xl) var(--r-xl) 0;
+    border-width: 0 1px 0 0;
     transform: translateX(-100%);
     box-shadow: none;
     z-index: 100;

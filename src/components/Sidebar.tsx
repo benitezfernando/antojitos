@@ -118,9 +118,9 @@ export default function Sidebar() {
               href={link.href}
               onClick={close}
               className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors border-l-2 border-transparent',
+                'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
                 pathname === link.href
-                  ? 'bg-accent text-primary font-semibold border-l-primary'
+                  ? 'bg-card text-primary font-semibold shadow-sm'
                   : 'text-foreground/70 hover:bg-accent hover:text-foreground',
               )}
             >
