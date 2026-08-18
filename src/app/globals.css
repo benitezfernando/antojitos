@@ -639,7 +639,10 @@ hr.divider {
 
   .hide-mobile { display: none !important; }
 
-  body { overflow-x: hidden; }
+  /* background-attachment: fixed repinta el mesh gradient en cada frame de
+     scroll — en iOS Safari eso traba/entrecorta el scroll de forma notoria.
+     En mobile el fondo scrollea con la página en vez de quedar fijo. */
+  body { overflow-x: hidden; background-attachment: scroll; }
 }
 
 /* ── Prefers reduced motion ── */
