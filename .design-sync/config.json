@@ -1,0 +1,12 @@
+{
+  "projectId": "1b7ec179-c806-4062-aac5-b596d3be434c",
+  "pkg": "antojitos-admin",
+  "globalName": "AntojitosUI",
+  "shape": "package",
+  "srcDir": "src/components/ui",
+  "tsconfig": "tsconfig.json",
+  "cssEntry": ".design-sync/.cache/compiled.css",
+  "buildCmd": "node .design-sync/compile-css.mjs",
+  "runtimeFontPrefixes": ["Outfit", "Geist", "JetBrains"],
+  "readmeHeader": ".design-sync/conventions.md"
+}
