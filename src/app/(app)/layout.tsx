@@ -1,5 +1,7 @@
 import { ViewTransition } from 'react';
 import Sidebar from "@/components/Sidebar";
+import "./globals.css";
+import "./antojitos-patch.css";
 
 export default function AppLayout({
   children,

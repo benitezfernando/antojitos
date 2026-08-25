@@ -1,0 +1,404 @@
+/* ============================================================================
+   antojitos-patch.css — correcciones de UX/UI sobre antojitos-admin@0.1.0
+   ----------------------------------------------------------------------------
+   Se carga DESPUÉS de styles.css. No reemplaza nada del paquete: corrige vía
+   data-slot y agrega las variantes de estado que faltan.
+
+   Cada bloque cita el hallazgo del informe que resuelve.
+   ========================================================================== */
+
+
+/* ── 1. Tokens que faltan o están rotos ───────────────────────────────────
+   Hallazgo 03: --font-sans se declara como var(--font-sans), que es una
+   referencia circular inválida. html{font-family:var(--font-sans)} y la clase
+   .font-heading no resuelven a nada.
+   Hallazgo 02: el paquete no embarca fonts/ ni @font-face.
+   ------------------------------------------------------------------------- */
+/* Verificado contra globals.css @ main (5af4e8a95c73) del repo
+   benitezfernando/antojitos. Se carga DESPUÉS de src/app/globals.css.
+
+   Las fuentes NO se importan acá: next/font ya las autohospeda y expone
+   --font-outfit / --font-geist / --font-mono, que body y .page-title usan
+   directo. Un @import de Google duplicaría la descarga y pelearía con
+   next/font. Lo único roto es la circular de @theme inline (líneas 658-659),
+   y se cierra apuntando los tokens a las variables que next/font ya define. */
+
+:root {
+  --font-sans: var(--font-outfit, 'Outfit'), 'Inter', system-ui, -apple-system, sans-serif;
+  --font-heading: var(--font-geist, 'Geist'), var(--font-outfit, 'Outfit'), system-ui, sans-serif;
+  /* .kpi-value y .tabular ya piden var(--font-mono, 'JetBrains Mono'), pero
+     --font-mono no está declarado en ningún :root — sólo sobrevive por ese
+     fallback. Declararlo evita que un var(--font-mono) sin fallback (como los
+     de estas pantallas) resuelva a nada. */
+  --font-mono: var(--font-jetbrains, 'JetBrains Mono'), 'Geist Mono', ui-monospace, monospace;
+
+  /* Tintes de estado. Los tokens de estado del paquete son colores sólidos
+     pensados para rellenos; para texto sobre fondo claro hacen falta un fondo
+     tenue y un texto oscuro del mismo tono. Hallazgo: --warning-foreground y
+     --secondary-foreground son blanco puro sobre dorado y coral claros
+     (2,5:1 y 2,4:1).
+
+     Los valores de -ink están elegidos para que el par tinte/tinta, compuesto
+     sobre --card, supere 4,5:1 con texto de 12 px y peso 600 (que es texto
+     normal para WCAG, no texto grande). Ratios medidos sobre blanco:
+       success 6,1:1 · warning 5,7:1 · danger 6,3:1 · info 6,7:1
+     Si se cambia un -ink, hay que volver a medirlo: el margen no es holgado. */
+  --success-tint: hsl(172 60% 32% / 0.12);
+  --success-ink:  hsl(172 60% 24%);
+  --warning-tint: hsl(42 88% 43% / 0.16);
+  --warning-ink:  hsl(42 90% 25%);
+  --info-tint:    hsl(205 70% 45% / 0.12);
+  --info-ink:     hsl(205 72% 30%);
+  --danger-tint:  hsl(355 75% 55% / 0.12);
+  --danger-ink:   hsl(355 70% 38%);
+
+  /* Escala de radios por tamaño de elemento.
+     Hallazgo 05: --radius:0.9rem son 14,4 px aplicados igual a una tarjeta y a
+     un input de 36 px de alto. En una grilla densa el radio se come el ancho
+     útil. El radio debe bajar con el elemento. */
+  --r-control: 8px;   /* input, button, chip, celda editable */
+  --r-panel:   12px;  /* card, tabla, popover */
+  --r-shell:   16px;  /* sidebar, contenedor de página */
+
+  /* Objetivo de toque para vistas táctiles.
+     Hallazgo 06: Button va de 24 a 36 px y Badge mide 20 px. La vista móvil se
+     usa en el depósito, con las manos ocupadas. */
+  --touch: 44px;
+}
+
+/* Hallazgo 04: el README dice que el modo oscuro se activa con la clase `dark`
+   en un ancestro; el CSS lo implementa con @media (prefers-color-scheme).
+   Poner la clase no hace nada y no se puede ofrecer un selector de tema.
+   Los componentes ya traen sus variantes dark:, así que sólo faltan tokens. */
+.dark {
+  color-scheme: dark;
+  --background: oklch(0.19 0.008 90);
+  --foreground: oklch(0.96 0.006 90);
+  --card: oklch(0.23 0.009 90);
+  --card-foreground: oklch(0.96 0.006 90);
+  --popover: oklch(0.25 0.009 90);
+  --popover-foreground: oklch(0.96 0.006 90);
+  --muted: oklch(0.28 0.008 90);
+  --muted-foreground: oklch(0.72 0.012 90);
+  --accent: oklch(0.30 0.010 90);
+  --accent-foreground: oklch(0.96 0.006 90);
+  --border: oklch(0.32 0.008 90);
+  --border-strong: oklch(0.42 0.010 90);
+  --surface: oklch(0.21 0.008 90);
+  --surface-alt: oklch(0.24 0.008 90);
+  --text-muted: oklch(0.74 0.012 90);
+  --text-subtle: oklch(0.60 0.012 90);
+  --success-tint: hsl(172 55% 45% / 0.20);
+  --success-ink:  hsl(172 50% 72%);
+  --warning-tint: hsl(42 80% 55% / 0.20);
+  --warning-ink:  hsl(42 85% 72%);
+  --info-tint:    hsl(205 65% 58% / 0.20);
+  --info-ink:     hsl(205 70% 76%);
+  --danger-tint:  hsl(355 70% 60% / 0.20);
+  --danger-ink:   hsl(355 80% 76%);
+}
+
+
+/* ── 2. Card: opaca por defecto, decorada sólo si se pide ──────────────────
+   Hallazgo 4.1: [data-slot="card"] lleva backdrop-filter: blur(20px), fondo
+   blanco al 55 %, shadow-md y un ::before con degradado primario→coral, sin
+   excepciones. En un tablero con seis KPIs y dos tablas cada contenedor pide
+   la misma atención y ninguno la obtiene.
+   ------------------------------------------------------------------------- */
+[data-slot="card"] {
+  background: var(--card);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid var(--border);
+  border-radius: var(--r-panel);
+  box-shadow: none;
+}
+[data-slot="card"]::before { content: none; }
+
+/* Opt-in: la única tarjeta de la pantalla que sí es el titular. */
+[data-slot="card"][data-featured] {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+[data-slot="card"][data-featured]::before {
+  content: "";
+  display: block;
+  height: 3px;
+  margin: -1px -1px 0;
+  border-radius: var(--r-panel) var(--r-panel) 0 0;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+}
+
+/* Tarjeta de estado: reemplaza el color de acento por significado. */
+[data-slot="card"][data-state-level="ok"]      { border-color: var(--success);     background: var(--success-tint); }
+[data-slot="card"][data-state-level="warning"] { border-color: var(--warning);     background: var(--warning-tint); }
+[data-slot="card"][data-state-level="danger"]  { border-color: var(--destructive); background: var(--danger-tint); }
+[data-slot="card"][data-state-level="info"]    { border-color: var(--info);        background: var(--info-tint); }
+
+/* La sombra queda reservada para lo que efectivamente flota. */
+[data-slot="dialog-content"],
+[data-slot="alert-dialog-content"],
+[data-slot="popover-content"],
+[data-slot="select-content"] {
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--r-panel);
+}
+
+
+/* ── 3. Badge: las variantes de estado que el paquete no expone ────────────
+   Hallazgo 4.2: el sistema define --success, --warning e --info y el README
+   los presenta como los colores de estado, pero ni Badge ni Button exponen
+   esas variantes. Cada pantalla de stock las improvisa con className.
+
+   El hook es data-status, NO data-variant: el componente Badge ya emite
+   data-variant="default" por su cuenta, así que un selector sobre
+   data-variant alcanzaría a TODOS los badges de la app y les inyectaría el
+   glifo. data-status no lo emite ninguna primitiva del paquete.
+
+     <Badge data-status="warning">Bajo</Badge>
+   ------------------------------------------------------------------------- */
+[data-slot="badge"][data-status] {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+[data-slot="badge"][data-status="success"] { background: var(--success-tint); color: var(--success-ink); }
+[data-slot="badge"][data-status="warning"] { background: var(--warning-tint); color: var(--warning-ink); }
+[data-slot="badge"][data-status="info"]    { background: var(--info-tint);    color: var(--info-ink); }
+[data-slot="badge"][data-status="danger"]  { background: var(--danger-tint);  color: var(--danger-ink); }
+[data-slot="badge"][data-status="neutral"] {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+}
+
+/* El color no puede ser el único portador de información: el glifo hace que
+   el estado se lea en blanco y negro y con daltonismo rojo-verde, que es
+   justo el eje que este sistema usa (verde OK / rojo crítico).
+
+   Sin :not() en la regla base: :not() suma el peso de su argumento, así que
+   [data-status]:not([data-status="neutral"]) da (0,3,0) y le gana a
+   [data-status="danger"] en (0,2,0) — el width/height de la base pisaba el
+   del rombo. Cada estado declara su propia forma y su propio tamaño. */
+[data-slot="badge"][data-status]::before {
+  content: "";
+  flex-shrink: 0;
+  background: currentColor;
+}
+[data-slot="badge"][data-status="neutral"]::before { content: none; }
+[data-slot="badge"][data-status="success"]::before { width: 6px; height: 6px; border-radius: 50%; }
+[data-slot="badge"][data-status="info"]::before    { width: 6px; height: 6px; border-radius: 1px; }
+[data-slot="badge"][data-status="danger"]::before {
+  width: 7px; height: 7px;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+[data-slot="badge"][data-status="warning"]::before {
+  background: none;
+  width: 0; height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 7px solid currentColor;
+}
+
+
+/* ── 4. Button: destructive con relleno, y tamaño táctil ───────────────────
+   Hallazgo 4.4: la variante destructive es un tinte al 10 %, no un relleno.
+   Al lado de secondary, que es coral sólido, la jerarquía queda invertida:
+   el botón de cancelar atrae más la mirada que el de eliminar.
+
+   Se separan dos usos que hoy comparten una variante:
+     data-action="destroy"       → confirmar en un diálogo (relleno, uno solo)
+     data-action="destroy-soft"  → borrar una fila de una tabla (tinte, repetible)
+
+   Igual que en Badge, el hook NO es data-variant: Button también lo emite por
+   su cuenta. Y las dos reglas declaran fondo, color y borde completos, para no
+   depender de las clases base — si el parche se retira, el botón vuelve a su
+   variante autorada en JSX, no a un primary verde por accidente.
+   Se autoran sobre variant="outline", que es la base más neutra.
+   ------------------------------------------------------------------------- */
+[data-slot="button"][data-action="destroy"] {
+  background: var(--destructive);
+  color: #fff;
+  border: 1px solid transparent;
+}
+[data-slot="button"][data-action="destroy"]:hover {
+  background: hsl(355 70% 47%);
+}
+[data-slot="button"][data-action="destroy-soft"] {
+  background: var(--danger-tint);
+  color: var(--danger-ink);
+  border: 1px solid transparent;
+}
+[data-slot="button"][data-action="destroy-soft"]:hover {
+  background: hsl(355 75% 55% / 0.18);
+}
+
+/* Hallazgo 06: falta un tamaño para las vistas táctiles. */
+[data-slot="button"][data-touch] {
+  height: var(--touch);
+  min-width: var(--touch);
+  padding-inline: 18px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: var(--r-control);
+}
+
+[data-slot="button"] { border-radius: var(--r-control); }
+[data-slot="input"], [data-slot="select-trigger"] { border-radius: var(--r-control); }
+
+
+/* ── 5. Tabla: jerarquía, alineación y densidad ────────────────────────────
+   Hallazgo 4.3: el encabezado usa text-foreground font-medium, igual que los
+   datos, así que no se lee como encabezado; los números quedan a la izquierda
+   y sin tabular; y no hay thead pegajoso.
+   ------------------------------------------------------------------------- */
+[data-slot="table-head"] {
+  height: 34px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  border-bottom: 1px solid var(--border-strong);
+  white-space: nowrap;
+  /* th centra por defecto en el navegador. Cuando estas reglas reemplazan a las
+     clases de utilidad, sin esto los encabezados de texto quedan centrados
+     sobre columnas alineadas a la izquierda. La regla [data-numeric] de abajo
+     sigue ganando para las columnas de cantidad. */
+  text-align: left;
+}
+
+/* Cantidades: monoespaciada tabular y alineadas a la derecha. Es la decisión
+   más acertada del paquete (.kpi-value / .tabular); acá sólo se hace
+   declarativa a nivel de columna.
+
+   nowrap es obligatorio, no cosmético: "$ 1.240,0" tiene un espacio después
+   del signo, así que en una columna angosta el navegador corta ahí y deja el
+   símbolo solo en una línea. Eso duplica el alto de esa fila y rompe la
+   uniformidad que la escala tabular existe para dar. */
+[data-slot="table-head"][data-numeric],
+[data-slot="table-cell"][data-numeric] {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+[data-slot="table-cell"][data-numeric] { font-weight: 600; }
+[data-slot="table-cell"][data-numeric] .unit {
+  color: var(--text-subtle);
+  font-weight: 400;
+}
+
+/* thead pegajoso: el listado de insumos crece sin techo y hoy se pierde el
+   encabezado al bajar. Requiere que el contenedor scrollee. */
+[data-slot="table-container"][data-sticky-head] {
+  max-height: 62vh;
+  overflow: auto;
+}
+[data-slot="table-container"][data-sticky-head] [data-slot="table-header"] {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--card);
+}
+
+/* Densidad conmutable, en el contenedor. */
+[data-slot="table"][data-density="compact"] [data-slot="table-cell"] {
+  padding-block: 4px;
+}
+[data-slot="table"][data-density="comfortable"] [data-slot="table-cell"] {
+  padding-block: 10px;
+}
+
+
+/* ── 6. Estados de fila, en TODOS los anchos ───────────────────────────────
+   Hallazgo 01, el más caro: en globals.css:598-600 las tres clases existen
+   sólo como
+     @media (max-width: 768px) { .table-wrap.responsive-cards tbody tr.row-* }
+   — doblemente acotadas: al ancho móvil Y al ancestro .responsive-cards. En
+   escritorio no pintan nada, así que la señal de estado desaparece justo
+   donde se trabaja.
+
+   Acá van sin media query y sin exigir ancestro. Se usan --rose/--gold/--mint,
+   que son los alias que el repo ya emplea para estas filas, para no introducir
+   un segundo vocabulario de color para lo mismo.
+   ------------------------------------------------------------------------- */
+.row-ok      > :first-child { box-shadow: inset 3px 0 0 var(--mint); }
+.row-warning > :first-child { box-shadow: inset 3px 0 0 var(--gold); }
+.row-danger  > :first-child { box-shadow: inset 3px 0 0 var(--rose); }
+.row-info    > :first-child { box-shadow: inset 3px 0 0 var(--info); }
+
+/* Barra de nivel: el recurso que permite escanear una columna sin leerla. */
+.level-bar {
+  display: inline-block;
+  width: 60px;
+  height: 5px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  background: var(--muted);
+  overflow: hidden;
+  vertical-align: middle;
+}
+.level-bar > i {
+  display: block;
+  height: 100%;
+  background: var(--text-muted);
+}
+.level-bar[data-level="ok"] > i      { background: var(--success); }
+.level-bar[data-level="warning"] > i { background: var(--warning); }
+.level-bar[data-level="danger"] > i  { background: var(--destructive); }
+
+
+/* ── 7. Ancho de página ───────────────────────────────────────────────────
+   Hallazgo 4.3: .page corta a 1200 px y centra, así que en el monitor del
+   obrador se desperdicia medio ancho. Las vistas de tabla necesitan el ancho
+   completo; la lectura larga sigue acotada.
+   ------------------------------------------------------------------------- */
+.page[data-wide] {
+  max-width: none;
+  width: 100%;
+}
+.page[data-prose] {
+  max-width: 76ch;
+}
+
+
+/* ── 8. Vista táctil ──────────────────────────────────────────────────────
+   Todo objetivo de toque a 44 px, y los estados de fila se mantienen como
+   borde izquierdo de la ficha (que es lo que el paquete ya hacía bien).
+   ------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  [data-slot="button"],
+  [data-slot="select-trigger"],
+  [data-slot="input"] {
+    min-height: var(--touch);
+    font-size: 15px;
+  }
+  [data-slot="badge"][data-status] {
+    height: 26px;
+    padding: 0 11px;
+    font-size: 12.5px;
+  }
+  .level-bar {
+    width: 100%;
+    height: 6px;
+  }
+}
+
+
+/* ── 9. Foco ──────────────────────────────────────────────────────────────
+   El paquete ya deriva el foco de --ring en * y respeta aria-invalid: no se
+   toca. Sólo se garantiza que el anillo no quede tapado por un thead
+   pegajoso ni recortado por el overflow del contenedor.
+   ------------------------------------------------------------------------- */
+[data-slot="table-container"][data-sticky-head] :focus-visible {
+  scroll-margin-block: 40px;
+}
